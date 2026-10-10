@@ -1,0 +1,45 @@
+# SpendRecorder — the GitHub Actions workflow.
+#
+# COPY THIS WHOLE FILE into .github/workflows/iOS-testflight.yml in the repo,
+# replacing everything there (see HANDOVER.md, "One-time: update the workflow").
+# After that, all build changes happen in build/ios-build.sh — a normal, visible file.
+
+name: iOS build to TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "www/**"
+      - "resources/**"
+      - "build/**"
+      - "package.json"
+      - "capacitor.config.json"
+
+concurrency:
+  group: spendrecorder-ios-testflight
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # macos-26 carries Xcode 26, which Capacitor 8 and the App Store require.
+    # If GitHub ever rejects this label, change it to macos-15.
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: bash build/ios-build.sh

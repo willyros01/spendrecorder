@@ -1,0 +1,33 @@
+SPENDRECORDER — PROJECT NOTES
+=============================
+
+What it is
+  Public iOS app made from Expense Ledger build v13 (repo willyros01/expense-ledger).
+  The Expense Ledger web app and its repo stay untouched; SpendRecorder lives in
+  willyros01/spendrecorder. Plan: Claude doc "SpendRecorder — iOS App Plan" (Oct 9, 2026).
+
+Decisions (Oct 9, 2026)
+  Name SpendRecorder · bundle ID io.github.willyros01.spendrecorder · Team VXMLKHF72B
+  One user, one phone: "Acting as", "Submitted by" and the status pills
+  (Pending / Approved / Rejected) removed. No Firebase: SQLite on the phone.
+  Currencies like Fairpot: per-expense currency picker (home and recent first),
+  home currency setting (default CAD). A new expense always starts in Canadian Dollar.
+  Rates keep Expense Ledger's dated lookup, with the source always shown:
+    Frankfurter (expense date, then nearest date within 10 days) → ExchangeRate-API
+    (labelled as today's rate) → last known rate → 1:1 placeholder. Tap to type your own.
+  Editing keeps the saved rate unless the date or currency changes.
+  Public App Store release: first-use terms screen, privacy and terms pages,
+  contact willyros01@gmail.com. iPad layout widened as in Fairpot.
+  Fixes from the v13 review: local date instead of UTC; today's rate never labelled as
+  the expense's date; HRK and VEF (no longer exist) removed from the list.
+
+Version history
+  v1.0.0 (Oct 9, 2026) — first version.
+    Copied Expense Ledger v13 into this repo, then converted per the plan.
+    Storage: SQLite, one transaction per change (BEGIN … COMMIT / ROLLBACK); the screens are
+    re-read from the database after every commit; a failed save changes nothing and says so.
+    Receipt photos inside SQLite (own table, deleted with their expense). Delete keeps the
+    6-second Undo, then commits. Imports are all-or-nothing.
+    Libraries built in (React, SheetJS); no service worker, no Firebase.
+    Tested in a browser: 44 checks passed (terms, add/edit/delete/undo, three rate sources,
+    own rate, storage failure, rename, import, home currency, exports, iPad layout).

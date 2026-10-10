@@ -1,0 +1,16 @@
+{
+  "appId": "io.github.willyros01.spendrecorder",
+  "appName": "SpendRecorder",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "zoomEnabled": true
+  },
+  "plugins": {
+    "CapacitorSQLite": {
+      "iosDatabaseLocation": "Library/CapacitorDatabase",
+      "iosIsEncryption": false,
+      "androidIsEncryption": false
+    }
+  }
+}

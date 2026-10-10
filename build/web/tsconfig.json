@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "react",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment",
+    "target": "ES2020",
+    "module": "es2020",
+    "removeComments": false,
+    "noEmitOnError": true,
+    "outDir": "../../www",
+    "rootDir": "../../src",
+    "skipLibCheck": true
+  },
+  "files": ["../../src/app.jsx"]
+}
