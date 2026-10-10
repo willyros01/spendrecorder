@@ -6,3 +6,4 @@ This file records intentional cloud-build triggers for SpendRecorder.
   SpendRecorder created (Apple app ID 6821221103, SKU spendrecorder, English (Canada)).
   All four GitHub secrets set. First signed TestFlight build requested.
 - 2026-10-09: First build failed after 18 s (exit 3); workflow now shows the last 40 log lines on failure. Rebuild.
+- 2026-10-09: Second build: Apple answered 401 NOT_AUTHORIZED. Added a secrets format check (no values printed). Rebuild.
