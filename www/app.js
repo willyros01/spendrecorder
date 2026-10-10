@@ -2,7 +2,7 @@
 /* SpendRecorder — the app (React, compiled to www/app.js at build time).
    Made from Expense Ledger build v13. Storage is in www/storage.js. */
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 const APP_NAME = "SpendRecorder";
 const DEFAULT_CATEGORIES = ["Food & Dining", "Transportation", "Accommodation", "Utilities", "Office & Supplies", "Health & Wellness", "Entertainment", "Other"];
 const UNDO_WINDOW_MS = 6000;
@@ -86,6 +86,8 @@ function fmtRate(v) {
 function monthLabel(ym) { const [y, m] = ym.split("-"); return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-CA", { month: "long", year: "numeric" }); }
 function monthLabelOf(ym) { const [y, m] = ym.split("-"); return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-CA", { month: "short", year: "numeric" }); }
 function dedupKey(en) { return `${en.date}|${en.vendor.trim().toLowerCase()}|${en.currency}|${Number(en.amount).toFixed(2)}`; }
+// Vendors and categories are always listed A to Z (ignoring capitals), including right after adding one.
+function byName(a, b) { return a.localeCompare(b, "en", { sensitivity: "base" }); }
 function newId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 function compressImage(file, maxWidth = 600, quality = 0.5) {
     return new Promise((resolve, reject) => {
@@ -510,13 +512,13 @@ function SpendRecorder() {
         const set = new Set(vendors);
         entries.forEach(e => { if (e.vendor && e.vendor.trim())
             set.add(e.vendor.trim()); });
-        return Array.from(set).sort((a, b) => a.localeCompare(b));
+        return Array.from(set).sort(byName);
     }, [vendors, entries]);
     const allCategories = useMemo(() => {
         const set = new Set(categories);
         entries.forEach(e => { if (e.category && e.category.trim())
             set.add(e.category.trim()); });
-        return Array.from(set);
+        return Array.from(set).sort(byName);
     }, [categories, entries]);
     const [preview, setPreview] = useState(null); // { rate, usedDate, source } for the form
     const [previewLoading, setPreviewLoading] = useState(false);
@@ -528,6 +530,8 @@ function SpendRecorder() {
     const [picker, setPicker] = useState(null); // null | "entry" | "home"
     const [showNewVendor, setShowNewVendor] = useState(false);
     const [newVendorText, setNewVendorText] = useState("");
+    const [showNewCategory, setShowNewCategory] = useState(false);
+    const [newCategoryText, setNewCategoryText] = useState("");
     const [showCatManager, setShowCatManager] = useState(false);
     const [showVendorManager, setShowVendorManager] = useState(false);
     const [catEdits, setCatEdits] = useState({});
@@ -651,6 +655,31 @@ function SpendRecorder() {
         if (await commitOps([{ op: "setCategories", list: [...allCategories, name] }], "The new category"))
             setNewCatText("");
     }
+    // "+ Add new category…" in the Category dropdown, the same way vendors are added.
+    function handleCategorySelect(e) {
+        const v = e.target.value;
+        if (v === "__new__") {
+            setShowNewCategory(true);
+            setNewCategoryText("");
+        }
+        else {
+            setShowNewCategory(false);
+            setForm(f => ({ ...f, category: v }));
+        }
+    }
+    async function confirmNewCategory() {
+        const name = newCategoryText.trim();
+        if (!name)
+            return;
+        if (!allCategories.includes(name)) {
+            if (!(await commitOps([{ op: "setCategories", list: [...allCategories, name] }], "The new category")))
+                return;
+        }
+        setForm(f => ({ ...f, category: name }));
+        setNewCategoryText("");
+        setShowNewCategory(false);
+        showToast(`Added category "${name}"`);
+    }
     async function renameCategory(oldName, newName) {
         const trimmed = newName.trim();
         if (!trimmed || trimmed === oldName)
@@ -746,6 +775,7 @@ function SpendRecorder() {
             }).catch(() => { });
         }
         setShowNewVendor(false);
+        setShowNewCategory(false);
         setFormError("");
         window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -1355,19 +1385,27 @@ function SpendRecorder() {
                     React.createElement("div", { className: "lblrow", style: { marginTop: 14 } },
                         React.createElement("label", { className: "lbl", style: { marginBottom: 0 } }, "Category"),
                         React.createElement("button", { type: "button", className: "linkbtn", onClick: () => setShowCatManager(s => !s) }, "Manage")),
-                    React.createElement("select", { className: "fld", value: form.category, onChange: e => setForm({ ...form, category: e.target.value }) }, allCategories.map(c => React.createElement("option", { key: c, value: c }, c))),
+                    !showNewCategory ? (React.createElement("select", { className: "fld", value: form.category, onChange: handleCategorySelect },
+                        allCategories.map(c => React.createElement("option", { key: c, value: c }, c)),
+                        React.createElement("option", { value: "__new__" }, "+ Add new category\u2026"))) : (React.createElement("div", { style: { display: "flex", gap: 8 } },
+                        React.createElement("input", { autoFocus: true, type: "text", className: "fld", placeholder: "New category name", value: newCategoryText, onChange: e => setNewCategoryText(e.target.value), onKeyDown: e => { if (e.key === "Enter") {
+                                e.preventDefault();
+                                confirmNewCategory();
+                            } } }),
+                        React.createElement("button", { type: "button", className: "btn btn-soft", style: { width: "auto", padding: "0 16px" }, onClick: confirmNewCategory }, "Add"),
+                        React.createElement("button", { type: "button", className: "btn btn-plain", style: { width: "auto", padding: "0 14px" }, onClick: () => { setShowNewCategory(false); setNewCategoryText(""); } }, "\u2715"))),
                     showCatManager && (React.createElement("div", { className: "manager" },
-                        allCategories.map(c => (React.createElement("div", { key: c, className: "managerrow" },
-                            React.createElement("span", { className: "dot", style: { background: colorFor(c) } }),
-                            React.createElement("input", { className: "fld", value: catEdits[c] ?? c, onChange: e => setCatEdits({ ...catEdits, [c]: e.target.value }) }),
-                            React.createElement("button", { type: "button", className: "linkbtn", onClick: () => { renameCategory(c, catEdits[c] ?? c); setCatEdits(s => { const n = { ...s }; delete n[c]; return n; }); } }, "Save"),
-                            React.createElement("button", { type: "button", className: "linkbtn danger", onClick: () => deleteCategory(c) }, "Delete")))),
                         React.createElement("div", { className: "managerrow" },
                             React.createElement("input", { className: "fld", placeholder: "New category", value: newCatText, onChange: e => setNewCatText(e.target.value), onKeyDown: e => { if (e.key === "Enter") {
                                     e.preventDefault();
                                     addCategory();
                                 } } }),
-                            React.createElement("button", { type: "button", className: "linkbtn", onClick: addCategory }, "Add")))),
+                            React.createElement("button", { type: "button", className: "linkbtn", onClick: addCategory }, "Add")),
+                        allCategories.map(c => (React.createElement("div", { key: c, className: "managerrow" },
+                            React.createElement("span", { className: "dot", style: { background: colorFor(c) } }),
+                            React.createElement("input", { className: "fld", value: catEdits[c] ?? c, onChange: e => setCatEdits({ ...catEdits, [c]: e.target.value }) }),
+                            React.createElement("button", { type: "button", className: "linkbtn", onClick: () => { renameCategory(c, catEdits[c] ?? c); setCatEdits(s => { const n = { ...s }; delete n[c]; return n; }); } }, "Save"),
+                            React.createElement("button", { type: "button", className: "linkbtn danger", onClick: () => deleteCategory(c) }, "Delete")))))),
                     React.createElement("label", { className: "lbl", style: { marginTop: 14 } }, "Comments"),
                     React.createElement("textarea", { rows: 2, className: "fld", placeholder: "Optional notes", value: form.comments, onChange: e => setForm({ ...form, comments: e.target.value }) })),
                 formError && React.createElement("div", { className: "card err wide", style: { marginBottom: 12 } }, formError),

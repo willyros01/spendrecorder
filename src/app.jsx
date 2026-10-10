@@ -2,7 +2,7 @@
    Made from Expense Ledger build v13. Storage is in www/storage.js. */
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 const APP_NAME = "SpendRecorder";
 
 const DEFAULT_CATEGORIES = ["Food & Dining","Transportation","Accommodation","Utilities","Office & Supplies","Health & Wellness","Entertainment","Other"];
@@ -79,6 +79,8 @@ function fmtRate(v){
 function monthLabel(ym){ const [y,m]=ym.split("-"); return new Date(Number(y),Number(m)-1,1).toLocaleDateString("en-CA",{month:"long",year:"numeric"}); }
 function monthLabelOf(ym){ const [y,m]=ym.split("-"); return new Date(Number(y),Number(m)-1,1).toLocaleDateString("en-CA",{month:"short",year:"numeric"}); }
 function dedupKey(en){ return `${en.date}|${en.vendor.trim().toLowerCase()}|${en.currency}|${Number(en.amount).toFixed(2)}`; }
+// Vendors and categories are always listed A to Z (ignoring capitals), including right after adding one.
+function byName(a, b){ return a.localeCompare(b, "en", { sensitivity:"base" }); }
 function newId(){ return `${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
 
 function compressImage(file, maxWidth=600, quality=0.5){
@@ -489,12 +491,12 @@ function SpendRecorder(){
   const allVendors = useMemo(()=>{
     const set = new Set(vendors);
     entries.forEach(e=>{ if(e.vendor && e.vendor.trim()) set.add(e.vendor.trim()); });
-    return Array.from(set).sort((a,b)=>a.localeCompare(b));
+    return Array.from(set).sort(byName);
   },[vendors, entries]);
   const allCategories = useMemo(()=>{
     const set = new Set(categories);
     entries.forEach(e=>{ if(e.category && e.category.trim()) set.add(e.category.trim()); });
-    return Array.from(set);
+    return Array.from(set).sort(byName);
   },[categories, entries]);
 
   const [preview, setPreview] = useState(null);       // { rate, usedDate, source } for the form
@@ -509,6 +511,8 @@ function SpendRecorder(){
 
   const [showNewVendor, setShowNewVendor] = useState(false);
   const [newVendorText, setNewVendorText] = useState("");
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryText, setNewCategoryText] = useState("");
   const [showCatManager, setShowCatManager] = useState(false);
   const [showVendorManager, setShowVendorManager] = useState(false);
   const [catEdits, setCatEdits] = useState({});
@@ -614,6 +618,22 @@ function SpendRecorder(){
     if(!name || allCategories.includes(name)) return;
     if(await commitOps([{op:"setCategories", list:[...allCategories,name]}], "The new category")) setNewCatText("");
   }
+  // "+ Add new category…" in the Category dropdown, the same way vendors are added.
+  function handleCategorySelect(e){
+    const v = e.target.value;
+    if(v==="__new__"){ setShowNewCategory(true); setNewCategoryText(""); }
+    else { setShowNewCategory(false); setForm(f=>({...f,category:v})); }
+  }
+  async function confirmNewCategory(){
+    const name = newCategoryText.trim();
+    if(!name) return;
+    if(!allCategories.includes(name)){
+      if(!(await commitOps([{op:"setCategories", list:[...allCategories,name]}], "The new category"))) return;
+    }
+    setForm(f=>({...f,category:name}));
+    setNewCategoryText(""); setShowNewCategory(false);
+    showToast(`Added category "${name}"`);
+  }
   async function renameCategory(oldName,newName){
     const trimmed = newName.trim();
     if(!trimmed || trimmed===oldName) return;
@@ -683,7 +703,7 @@ function SpendRecorder(){
         if(editIdRef.current===entry.id) setForm(f=> f.receiptDirty ? f : {...f, receipt:d});
       }).catch(()=>{});
     }
-    setShowNewVendor(false); setFormError("");
+    setShowNewVendor(false); setShowNewCategory(false); setFormError("");
     window.scrollTo({top:0,behavior:"smooth"});
   }
   function cancelEdit(){ setEditingId(null); editIdRef.current=null; setForm(emptyForm(allCategories[0])); setFormError(""); }
@@ -1252,11 +1272,28 @@ function SpendRecorder(){
                 <label className="lbl" style={{marginBottom:0}}>Category</label>
                 <button type="button" className="linkbtn" onClick={()=>setShowCatManager(s=>!s)}>Manage</button>
               </div>
-              <select className="fld" value={form.category} onChange={e=>setForm({...form, category:e.target.value})}>
-                {allCategories.map(c=> <option key={c} value={c}>{c}</option>)}
-              </select>
+              {!showNewCategory ? (
+                <select className="fld" value={form.category} onChange={handleCategorySelect}>
+                  {allCategories.map(c=> <option key={c} value={c}>{c}</option>)}
+                  <option value="__new__">+ Add new category…</option>
+                </select>
+              ) : (
+                <div style={{display:"flex", gap:8}}>
+                  <input autoFocus type="text" className="fld" placeholder="New category name" value={newCategoryText}
+                    onChange={e=>setNewCategoryText(e.target.value)}
+                    onKeyDown={e=>{ if(e.key==="Enter"){ e.preventDefault(); confirmNewCategory(); } }} />
+                  <button type="button" className="btn btn-soft" style={{width:"auto",padding:"0 16px"}} onClick={confirmNewCategory}>Add</button>
+                  <button type="button" className="btn btn-plain" style={{width:"auto",padding:"0 14px"}} onClick={()=>{ setShowNewCategory(false); setNewCategoryText(""); }}>✕</button>
+                </div>
+              )}
               {showCatManager && (
                 <div className="manager">
+                  <div className="managerrow">
+                    <input className="fld" placeholder="New category" value={newCatText}
+                      onChange={e=>setNewCatText(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==="Enter"){ e.preventDefault(); addCategory(); } }} />
+                    <button type="button" className="linkbtn" onClick={addCategory}>Add</button>
+                  </div>
                   {allCategories.map(c=>(
                     <div key={c} className="managerrow">
                       <span className="dot" style={{background: colorFor(c)}} />
@@ -1265,12 +1302,6 @@ function SpendRecorder(){
                       <button type="button" className="linkbtn danger" onClick={()=>deleteCategory(c)}>Delete</button>
                     </div>
                   ))}
-                  <div className="managerrow">
-                    <input className="fld" placeholder="New category" value={newCatText}
-                      onChange={e=>setNewCatText(e.target.value)}
-                      onKeyDown={e=>{ if(e.key==="Enter"){ e.preventDefault(); addCategory(); } }} />
-                    <button type="button" className="linkbtn" onClick={addCategory}>Add</button>
-                  </div>
                 </div>
               )}
 

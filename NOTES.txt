@@ -31,3 +31,9 @@ Version history
     Libraries built in (React, SheetJS); no service worker, no Firebase.
     Tested in a browser: 44 checks passed (terms, add/edit/delete/undo, three rate sources,
     own rate, storage failure, rename, import, home currency, exports, iPad layout).
+
+  v1.0.1 (Oct 9, 2026)
+    Category dropdown ends with "+ Add new category…" (works like "+ Add new vendor…").
+    The add box inside Manage moved to the top (it was hidden at the bottom of the scroll box).
+    Vendors and categories always listed A to Z, ignoring capitals, also right after adding.
+    Tested in a browser: 49 checks passed.

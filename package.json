@@ -1,6 +1,6 @@
 {
   "name": "spendrecorder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "SpendRecorder — single-user expense recorder for iOS (Capacitor), made from the Expense Ledger web app. Data in SQLite on the phone.",
   "scripts": {
