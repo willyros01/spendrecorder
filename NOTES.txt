@@ -37,3 +37,7 @@ Version history
     The add box inside Manage moved to the top (it was hidden at the bottom of the scroll box).
     Vendors and categories always listed A to Z, ignoring capitals, also right after adding.
     Tested in a browser: 49 checks passed.
+
+  v1.0.2 (Oct 9, 2026)
+    New app icon (option C: spending bars on a white card with a gold coin, dark navy
+    background) and a matching launch screen.

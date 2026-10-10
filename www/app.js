@@ -2,7 +2,7 @@
 /* SpendRecorder — the app (React, compiled to www/app.js at build time).
    Made from Expense Ledger build v13. Storage is in www/storage.js. */
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.0.2";
 const APP_NAME = "SpendRecorder";
 const DEFAULT_CATEGORIES = ["Food & Dining", "Transportation", "Accommodation", "Utilities", "Office & Supplies", "Health & Wellness", "Entertainment", "Other"];
 const UNDO_WINDOW_MS = 6000;
