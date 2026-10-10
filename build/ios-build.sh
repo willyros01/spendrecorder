@@ -18,6 +18,12 @@ for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
   fi
 done
 
+# Secrets typed on a phone or tablet often pick up an invisible trailing space or line
+# break. Remove spaces and line breaks around the three IDs (they never contain any).
+trim(){ local v="$1"; v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"; printf '%s' "$v"; }
+ASC_KEY_ID=$(trim "$ASC_KEY_ID"); ASC_ISSUER_ID=$(trim "$ASC_ISSUER_ID"); APPLE_TEAM_ID=$(trim "$APPLE_TEAM_ID")
+export ASC_KEY_ID ASC_ISSUER_ID APPLE_TEAM_ID
+
 TMP="${RUNNER_TEMP:-/tmp}"
 VERSION=$(node -p "require('./package.json').version")
 BUILD="${RUN_NUMBER:-1}"

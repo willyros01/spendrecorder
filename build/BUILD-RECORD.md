@@ -7,3 +7,4 @@ This file records intentional cloud-build triggers for SpendRecorder.
   All four GitHub secrets set. First signed TestFlight build requested.
 - 2026-10-09: First build failed after 18 s (exit 3); workflow now shows the last 40 log lines on failure. Rebuild.
 - 2026-10-09: Second build: Apple answered 401 NOT_AUTHORIZED. Added a secrets format check (no values printed). Rebuild.
+- 2026-10-09: Third build: each ID secret had one extra invisible character (space or line break). Build now trims them. Rebuild.
