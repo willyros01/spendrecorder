@@ -22,15 +22,16 @@
 9. Public APK: `https://www.cuberoot-systems.com/downloads/spendrecorder.apk`; when published, use `?build=RUN_ID` to bypass Silk/browser cache. No GitHub repository URL is exposed by the button.
 
 ## Required one-time signing — cannot skip
-- Required GitHub Actions secrets in SpendRecorder repo (names only):
+- Required GitHub Actions repository secrets (names only):
   - `SPENDRECORDER_SIGNING_KEYSTORE_BASE64`
   - `SPENDRECORDER_SIGNING_PASSWORD`
-- One-time private setup in Google Cloud Shell: `build/srasig.sh`. Script generates (or safely reuses) a PKCS12 signing key, verifies it, and saves the keystore/password plus a BASE64 text copy in private Cloud Shell files. **The owner enters both secrets MANUALLY** using GitHub repository **Settings > Secrets and variables > Actions**. The script does not use GitHub CLI, upload secrets, or start a build.
-- The key/password are **never printed in chat, committed to the repository or passed through the Cuberoot publisher**. Do not share either secret file.
-- Script reuses an existing key on rerun; it refuses to replace a partial key/password set.
-- Make an **offline private backup of both the keystore and password**. Losing either makes future APK updates impossible without uninstall/reinstall and local data loss.
-- After the owner confirms both secrets were saved manually, dispatch `android-apk.yml` on the `android` branch via GitHub Actions. Automatic website publication follows a confirmed successful run. Do not dispatch while the signing secrets are absent.
-- **Fail-closed rule:** missing/invalid secrets cause a red build and no publication, rather than shipping an unstable debug-signed APK.
+- **Owner's selected approach (2026-10-12):** ChatGPT generated the permanent keystore and password and supplied private downloadable files directly to the owner; the owner enters both values **MANUALLY** in GitHub `willyros01/spendrecorder` **Settings > Secrets and variables > Actions**. Do not require Google Cloud Shell or any signing-key generation script.
+- Signing material is not stored in this repository or in Cuberoot. Private backup ZIP and secret text are handed to the owner through the current conversation only; no signing secrets are committed to git, sent to chat text, or uploaded automatically.
+- Keystore is PKCS12, alias `spendrecorder`, RSA 3072-bit. Certificate SHA256 (public fingerprint only): `67f4284ccdc93bb75bbf939f76974888b3190eff46a1e2fb04489090749625fc`.
+- Retain the **original keystore and its password** in private secure offline storage for every future update. Never generate another key for updates unless explicitly performing a destructive migration.
+- The pre-existing `build/srasig.sh` is a legacy helper; **not required, not part of the owner's manual setup, and not to be run** for this signing key.
+- Once the owner confirms **both** repository secrets are saved, dispatch `android-apk.yml` from the `android` branch. Automatic website publication follows only a confirmed successful run.
+- **Fail-closed rule:** missing or invalid signing secrets cause a red build and no publication, rather than an ephemeral debug-signed APK.
 
 ## Real-device acceptance — not yet done
 After the first signed APK is live, test one item at a time on the Fire tablet:
@@ -48,5 +49,5 @@ After the first signed APK is live, test one item at a time on the Fire tablet:
 ## Current status
 - **PRE-FLIGHT PASS (GitHub run 38327473119):** App/package contract checks, shell syntax and native Capacitor Android + SQLite Java compilation succeeded. This does **not** prove APK signing, launch, or device behaviour.
 - First signing build (38327179622) and the later signing stage of run 38327473119 stopped at **Require permanent Android signing secrets**. The status reporter worked and Cuberoot's publisher ran successfully but intentionally did not upload an unsigned APK.
-- No signed APK has yet been built or published; manual signing-secret entry is a hard blocker. `build/srasig.sh` now creates private files for manual GitHub Actions secret entry without uploading them or triggering builds.
+- Permanent signing key/password were generated and handed to the owner privately for manual entry into GitHub Actions repository secrets. No signed APK has yet been built or published; repository-secret entry remains unverified and blocks builds.
 - Do not mark build, installation, on-device SQLite, or automatic Cuberoot publication PASS until separately verified.
