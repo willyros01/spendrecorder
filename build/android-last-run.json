@@ -1,10 +1,10 @@
 {
   "workflow": "SpendRecorder Android APK test build",
   "branch": "android",
-  "run_id": 38327179622,
+  "run_id": 38327473119,
   "run_attempt": "1",
-  "run_url": "https://github.com/willyros01/spendrecorder/actions/runs/38327179622",
-  "source_sha": "c396f05697e4b67455fed36e483ce9b969d963c3",
+  "run_url": "https://github.com/willyros01/spendrecorder/actions/runs/38327473119",
+  "source_sha": "57c0e7a670f78ea12b257c86fdf7abc2eb474057",
   "outcome": "failure",
   "artifact_name": null,
   "publication": {
@@ -12,8 +12,13 @@
     "state": "not-requested",
     "mechanism": "Cuberoot publisher polls this verified build report"
   },
-  "reported_at": "2026-10-13T00:25:52.825Z",
+  "reported_at": "2026-10-13T00:31:15.274Z",
   "jobs": [
+    {
+      "name": "Validate Android native compilation",
+      "conclusion": "success",
+      "failed_steps": []
+    },
     {
       "name": "apk",
       "conclusion": "failure",
