@@ -46,8 +46,13 @@ After the first signed APK is live, test one item at a time on the Fire tablet:
 9. Offline add/read and reconnection (no unverified network dependence for saved data).
 10. A++/accessibility, portrait/landscape, Fire Home/resume, app-update without losing SQLite records.
 
-## Current status
-- **PRE-FLIGHT PASS (GitHub run 38327473119):** App/package contract checks, shell syntax and native Capacitor Android + SQLite Java compilation succeeded. This does **not** prove APK signing, launch, or device behaviour.
-- First signing build (38327179622) and the later signing stage of run 38327473119 stopped at **Require permanent Android signing secrets**. The status reporter worked and Cuberoot's publisher ran successfully but intentionally did not upload an unsigned APK.
-- Permanent signing key/password were generated and handed to the owner privately for manual entry into GitHub Actions repository secrets. No signed APK has yet been built or published; repository-secret entry remains unverified and blocks builds.
-- Do not mark build, installation, on-device SQLite, or automatic Cuberoot publication PASS until separately verified.
+## Current status — 2026-10-12 / signed APK publication PASS
+- GitHub Actions run **38327473119**, attempt **2**, **SUCCESS**: native compile checks, permanent secret presence, signed Android APK build, APK signature/certificate verification, artifact upload, and release report complete.
+- Signed APK artifact **11782522806**; source commit `57c0e7a670f78ea12b257c86fdf7abc2eb474057`.
+- Permanent signer certificate SHA256: `67f4284ccdc93bb75bbf939f76974888b3190eff46a1e2fb04489090749625fc` (matches owner-provided signing key).
+- Cuberoot publish workflow run **38331336483** **SUCCESS**. Repository `willyros01/Cuberoot` branch `main` contains `downloads/spendrecorder.apk`, checksum and `downloads/spendrecorder-build.json`; apk_bytes **13746647**.
+- APK SHA256: `5e0cb50b59352e31ffb32739282a18a233171ef3da28735bdce6d238d4f45a51`; release metadata and SHA256 file agree.
+- Cuberoot GitHub Pages deployment run **38331357495** **SUCCESS** for published APK commit `6ebf532dee984e681419fb706c5188b5dd5b51fe`.
+- Planned direct download: `https://www.cuberoot-systems.com/downloads/spendrecorder.apk?build=38327473119`. External public HTTP download has not been independently verified here; site publication and Pages deployment were verified through GitHub.
+- **Fire HD device install, launch, SQLite persistence, receipts, import/export, offline behavior and acceptance testing are NOT YET VERIFIED.** Do not label Android app accepted until real-device tests pass.
+- Keep permanent signing key/password privately backed up; future APK updates must retain certificate identity.
