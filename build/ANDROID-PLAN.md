@@ -46,6 +46,7 @@ After the first signed APK is live, test one item at a time on the Fire tablet:
 10. A++/accessibility, portrait/landscape, Fire Home/resume, app-update without losing SQLite records.
 
 ## Current status
-- Android branch and workflows configured; GitHub reported initial failure at **Require permanent Android signing secrets**.
+- **PRE-FLIGHT PASS (GitHub run 38327473119):** App/package contract checks, shell syntax and native Capacitor Android + SQLite Java compilation succeeded. This does **not** prove APK signing, launch, or device behaviour.
+- First signing build (38327179622) and the later signing stage of run 38327473119 stopped at **Require permanent Android signing secrets**. The status reporter worked and Cuberoot's publisher ran successfully but intentionally did not upload an unsigned APK.
 - No signed APK has yet been built or published; signing setup is a hard blocker.
 - Do not mark build, installation, on-device SQLite, or automatic Cuberoot publication PASS until separately verified.
