@@ -25,11 +25,11 @@
 - Required GitHub Actions secrets in SpendRecorder repo (names only):
   - `SPENDRECORDER_SIGNING_KEYSTORE_BASE64`
   - `SPENDRECORDER_SIGNING_PASSWORD`
-- One-time private setup in Google Cloud Shell: `build/srasig.sh`. Script generates a PKCS12 signing key, saves key/password in private shell storage, and sets these GitHub Actions secrets using the authenticated `gh` CLI.
-- The key is **never printed in chat, committed to the repository or passed through the Cuberoot publisher**.
+- One-time private setup in Google Cloud Shell: `build/srasig.sh`. Script generates (or safely reuses) a PKCS12 signing key, verifies it, and saves the keystore/password plus a BASE64 text copy in private Cloud Shell files. **The owner enters both secrets MANUALLY** using GitHub repository **Settings > Secrets and variables > Actions**. The script does not use GitHub CLI, upload secrets, or start a build.
+- The key/password are **never printed in chat, committed to the repository or passed through the Cuberoot publisher**. Do not share either secret file.
 - Script reuses an existing key on rerun; it refuses to replace a partial key/password set.
 - Make an **offline private backup of both the keystore and password**. Losing either makes future APK updates impossible without uninstall/reinstall and local data loss.
-- After encrypted GitHub secrets are saved, the script dispatches the Android build. Automatic website publication follows a confirmed successful run.
+- After the owner confirms both secrets were saved manually, dispatch `android-apk.yml` on the `android` branch via GitHub Actions. Automatic website publication follows a confirmed successful run. Do not dispatch while the signing secrets are absent.
 - **Fail-closed rule:** missing/invalid secrets cause a red build and no publication, rather than shipping an unstable debug-signed APK.
 
 ## Real-device acceptance — not yet done
@@ -48,5 +48,5 @@ After the first signed APK is live, test one item at a time on the Fire tablet:
 ## Current status
 - **PRE-FLIGHT PASS (GitHub run 38327473119):** App/package contract checks, shell syntax and native Capacitor Android + SQLite Java compilation succeeded. This does **not** prove APK signing, launch, or device behaviour.
 - First signing build (38327179622) and the later signing stage of run 38327473119 stopped at **Require permanent Android signing secrets**. The status reporter worked and Cuberoot's publisher ran successfully but intentionally did not upload an unsigned APK.
-- No signed APK has yet been built or published; signing setup is a hard blocker.
+- No signed APK has yet been built or published; manual signing-secret entry is a hard blocker. `build/srasig.sh` now creates private files for manual GitHub Actions secret entry without uploading them or triggering builds.
 - Do not mark build, installation, on-device SQLite, or automatic Cuberoot publication PASS until separately verified.
