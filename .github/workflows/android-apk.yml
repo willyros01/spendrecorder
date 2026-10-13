@@ -23,7 +23,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check:
+    name: Validate Android native compilation
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Validate shared source, SQLite transaction contract and scripts
+        run: |
+          node build/test-android.cjs
+          bash -n build/android-build.sh
+          bash -n build/android-sign.sh
+          bash -n build/srasig.sh
+      - name: Generate Android project and compile native SQLite plugins
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+          java build/AndroidIcons.java resources/icon.png android/app/src/main/res
+          cd android
+          chmod +x ./gradlew
+          ./gradlew --no-daemon :app:compileDebugJavaWithJavac
   apk:
+    needs: [check]
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
