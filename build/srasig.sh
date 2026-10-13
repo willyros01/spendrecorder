@@ -1,44 +1,38 @@
 #!/usr/bin/env bash
-# SRASIG: one-time private SpendRecorder Android signing setup, in YOUR Google Cloud Shell.
-# No private keys or passwords are committed to GitHub or printed to this chat.
-# Run ONLY inside a shell you control. Re-running reuses the same key.
+# SRASIG: one-time PRIVATE SpendRecorder Android signing key preparation.
+# You enter the TWO GitHub Actions secrets MANUALLY in GitHub Settings.
+# This script never logs in to GitHub, uploads secrets or starts a build.
+# Run only in a shell you control; reruns reuse the existing signing key.
 set -euo pipefail
 umask 077
 
-REPO="willyros01/spendrecorder"
 DIR="$HOME/spendrecorder-sign"
 KEY="$DIR/spendrecorder.p12"
 PW="$DIR/password.txt"
+B64="$DIR/keystore-b64.txt"
 
-echo "SpendRecorder Android permanent signing setup"
-echo "Repo: $REPO"
-echo "No iOS or main branch is modified."
+echo "SpendRecorder permanent Android signing setup (manual secrets)"
+echo "Repository: willyros01/spendrecorder"
+echo "Branch: android"
+echo "No GitHub login, secret upload or build will be performed."
 
-# Google Cloud Shell is Debian-based. Install missing command-line tools.
 NEED=()
-command -v gh >/dev/null || NEED+=(gh)
 command -v keytool >/dev/null || NEED+=(default-jdk-headless)
 command -v openssl >/dev/null || NEED+=(openssl)
+command -v base64 >/dev/null || NEED+=(coreutils)
 if [ "${#NEED[@]}" -gt 0 ]; then
   echo "Installing required tools: ${NEED[*]}"
   sudo apt-get update -qq
   sudo apt-get install -y -qq "${NEED[@]}"
 fi
 
-if ! gh auth status >/dev/null 2>&1; then
-  echo ""
-  echo "One-time GitHub CLI authorization required."
-  echo "Follow the code or browser instructions. Use your account with access to $REPO."
-  gh auth login --hostname github.com --git-protocol https --web --scopes repo
-fi
-
 mkdir -p "$DIR"
 chmod 700 "$DIR"
 
 if [ -f "$KEY" ] && [ -f "$PW" ]; then
-  echo "Reusing existing private signing key. This is required for future updates."
+  echo "Reusing existing permanent keystore and password."
 elif [ ! -e "$KEY" ] && [ ! -e "$PW" ]; then
-  echo "Creating permanent SpendRecorder signing key..."
+  echo "Generating ONE permanent signing key..."
   openssl rand -hex 24 > "$PW"
   chmod 600 "$PW"
   PASSWORD="$(cat "$PW")"
@@ -49,33 +43,29 @@ elif [ ! -e "$KEY" ] && [ ! -e "$PW" ]; then
   unset PASSWORD
   chmod 600 "$KEY"
 else
-  echo "STOP: key/password mismatch. Do NOT generate another key."
-  echo "Please restore your original $KEY and $PW."
+  echo "STOP: keystore/password mismatch. Do NOT create a replacement key."
+  echo "Restore both original files into $DIR and retry."
   exit 1
 fi
 
-# Prove the saved key can be opened before setting GitHub secrets.
 PASSWORD="$(cat "$PW")"
 keytool -list -storetype PKCS12 -keystore "$KEY" \
   -storepass "$PASSWORD" -alias spendrecorder >/dev/null
 unset PASSWORD
+base64 -w 0 "$KEY" > "$B64"
+chmod 600 "$B64"
+test -s "$B64"
 
-echo "Uploading ONLY encrypted GitHub Actions secrets..."
-base64 -w 0 "$KEY" | gh secret set SPENDRECORDER_SIGNING_KEYSTORE_BASE64 --repo "$REPO"
-gh secret set SPENDRECORDER_SIGNING_PASSWORD --repo "$REPO" < "$PW"
-
 echo ""
-echo "Checking secret names (not values)..."
-gh secret list --repo "$REPO" | grep -E '^SPENDRECORDER_SIGNING_(KEYSTORE_BASE64|PASSWORD)[[:space:]]'
+echo "PASS: Existing or newly generated signing key verified."
+echo "MANUAL GitHub secrets entry — Settings > Secrets and variables > Actions:"
+echo "SPENDRECORDER_SIGNING_KEYSTORE_BASE64 : copy entire contents of $B64"
+echo "SPENDRECORDER_SIGNING_PASSWORD        : copy entire contents of $PW"
 echo ""
-echo "SUCCESS: permanent Android signing secrets configured."
-echo "Starting the newly signed Android APK build automatically..."
-gh workflow run android-apk.yml --ref android --repo "$REPO"
-echo "Build queued. The Cuberoot publisher will update the website after success."
-echo "IMPORTANT: Make a PRIVATE offline copy of BOTH files now:"
-echo "$KEY"
-echo "$PW"
+echo "Open these PRIVATE files in Cloud Shell Editor to select/copy their contents."
+echo "Do NOT paste the values into ChatGPT, email or any repository."
+echo "Keep a private OFFLINE backup of BOTH $KEY and $PW."
+echo "Cloud Shell storage alone is not a permanent backup."
+echo "Do not generate a new key for future APK updates."
 echo ""
-echo "Google Cloud Shell storage is NOT a permanent backup."
-echo "Never paste these secrets in ChatGPT or commit them to a repository."
-echo "Then tell ChatGPT: SRASIG DONE."
+echo "After BOTH secrets are manually saved in GitHub, tell ChatGPT: SRASIG DONE"
