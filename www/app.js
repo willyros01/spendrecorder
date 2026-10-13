@@ -234,6 +234,43 @@ async function shareFileNative(filename, base64, text) {
         opts.text = text;
     await ShareP.share(opts);
 }
+
+/* Android-only bridge: Fairpot's camera chooser and fail-closed public Downloads save.
+   Capacitor native WebView exposes bundled plugins through window.Capacitor.Plugins. */
+const RecorderAndroid = !!(window.Capacitor && window.Capacitor.isNativePlatform &&
+  window.Capacitor.isNativePlatform() && window.Capacitor.getPlatform &&
+  window.Capacitor.getPlatform()==="android");
+const SpendCamera = RecorderAndroid && window.Capacitor.Plugins && window.Capacitor.Plugins.Camera;
+const SpendDownloads = RecorderAndroid && window.Capacitor.Plugins && window.Capacitor.Plugins.SpendRecorderDocument;
+
+async function photoFromAndroidCamera(){
+  if(!SpendCamera || typeof SpendCamera.getPhoto!=="function"){
+    throw new Error("Android Camera service unavailable in this build");
+  }
+  const photo = await SpendCamera.getPhoto({
+    quality:90, allowEditing:false, resultType:"base64", source:"PROMPT",
+    promptLabelHeader:"Receipt photo", promptLabelPhoto:"Choose from Gallery", promptLabelPicture:"Take Photo"
+  });
+  if(!photo || !photo.base64String) throw new Error("No receipt photo was returned");
+  const binary = atob(photo.base64String);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0; i<binary.length; i++) bytes[i]=binary.charCodeAt(i);
+  const data = await compressImageSafe(new Blob([bytes],{type:"image/"+(photo.format||"jpeg")}));
+  if(!data) throw new Error("That photo is too large even after compression");
+  return data;
+}
+
+async function saveExportAndroid(filename, base64, mime){
+  if(!SpendDownloads || typeof SpendDownloads.saveToDownloads!=="function"){
+    throw new Error("Android Downloads service is unavailable in this build");
+  }
+  const result = await SpendDownloads.saveToDownloads({fileName:filename, base64, mimeType:mime});
+  if(!result || result.saved!==true || result.location!=="Downloads"){
+    throw new Error("Android export was not confirmed saved");
+  }
+  return result.fileName || filename;
+}
+
 /* ===================== terms of use (first use; the app stays locked until accepted) ===================== */
 const TERMS_VERSION = "1";
 const TERMS_DATE = "October 9, 2026";
@@ -780,7 +817,19 @@ function SpendRecorder() {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }
     function cancelEdit() { setEditingId(null); editIdRef.current = null; setForm(emptyForm(allCategories[0])); setFormError(""); }
-    async function handleReceiptChange(e) {
+    async function handleReceiptCamera(){
+    setImgError("");
+    try {
+      const dataUrl = await photoFromAndroidCamera();
+      setForm(f=>({...f,receipt:dataUrl,receiptDirty:true}));
+    } catch(err){
+      if(!isCancel(err) && !/dismiss/i.test((err && err.message)||"")){
+        setImgError("Camera unavailable — "+((err && err.message)||"unknown error"));
+      }
+    }
+  }
+
+  async function handleReceiptChange(e) {
         const file = e.target.files && e.target.files[0];
         if (!file)
             return;
@@ -1045,6 +1094,11 @@ function SpendRecorder() {
     }, [filtered]);
     // ---- files out: the phone's share sheet (Mail, Messages, WhatsApp, Save to Files …) ----
     async function offerFile(filename, base64, mime, text) {
+        if (RecorderAndroid) {
+            const saved = await saveExportAndroid(filename, base64, mime);
+            showToast("Saved to Downloads: " + saved);
+            return;
+        }
         if (Store.isNative && FS && ShareP) {
             try {
                 await shareFileNative(filename, base64, text);
@@ -1338,9 +1392,11 @@ function SpendRecorder() {
                 React.createElement("div", { className: "card", style: { marginBottom: 12 } },
                     React.createElement("label", { className: "lbl" }, "Receipt photo"),
                     React.createElement("div", { className: "photorow" },
-                        React.createElement("label", { className: "btn btn-soft photobtn" },
-                            form.receipt ? "Replace photo" : "Add photo",
-                            React.createElement("input", { type: "file", accept: "image/*", onChange: handleReceiptChange, style: { display: "none" } })),
+                        (RecorderAndroid
+                            ? React.createElement("button", { type: "button", className: "btn btn-soft photobtn", onClick: handleReceiptCamera }, form.receipt ? "Replace photo" : "Add photo (Camera / Gallery)")
+                            : React.createElement("label", { className: "btn btn-soft photobtn" },
+                                form.receipt ? "Replace photo" : "Add photo",
+                                React.createElement("input", { type: "file", accept: "image/*", onChange: handleReceiptChange, style: { display: "none" } }))),
                         form.receipt && (React.createElement(React.Fragment, null,
                             React.createElement("img", { src: form.receipt, alt: "Receipt preview", className: "thumb", onClick: () => setLightbox(form.receipt) }),
                             React.createElement("button", { type: "button", className: "btn btn-danger photobtn", onClick: () => setForm(f => ({ ...f, receipt: null, receiptDirty: true })) }, "Remove")))),

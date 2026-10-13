@@ -10,6 +10,8 @@ on:
       - "capacitor.config.json"
       - "build/android-build.sh"
       - "build/android-sign.sh"
+      - "build/android-native.sh"
+      - "build/test-android-media.cjs"
       - "build/test-android.cjs"
       - "build/AndroidIcons.java"
       - ".github/workflows/android-apk.yml"
@@ -39,14 +41,17 @@ jobs:
       - name: Validate shared source, SQLite transaction contract and scripts
         run: |
           node build/test-android.cjs
+          node build/test-android-media.cjs
           bash -n build/android-build.sh
           bash -n build/android-sign.sh
+          bash -n build/android-native.sh
           bash -n build/srasig.sh
       - name: Generate Android project and compile native SQLite plugins
         run: |
           npm install --no-audit --no-fund
           npx cap add android
           npx cap sync android
+          bash build/android-native.sh
           java build/AndroidIcons.java resources/icon.png android/app/src/main/res
           cd android
           chmod +x ./gradlew
@@ -76,8 +81,10 @@ jobs:
       - name: Check deterministic Android application and signing contracts
         run: |
           node build/test-android.cjs
+          node build/test-android-media.cjs
           bash -n build/android-build.sh
           bash -n build/android-sign.sh
+          bash -n build/android-native.sh
           bash -n build/srasig.sh
       - name: Check preinstalled Android SDK
         run: |

@@ -5,9 +5,11 @@ set -euo pipefail
 umask 077
 node --version
 node build/test-android.cjs
+node build/test-android-media.cjs
 npm install --no-audit --no-fund
 npx cap add android
 npx cap sync android
+bash build/android-native.sh
 test -f android/app/build.gradle
 test -d node_modules/@capacitor-community/sqlite/android
 test -s resources/icon.png

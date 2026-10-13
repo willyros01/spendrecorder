@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 assert.equal(p.name, 'spendrecorder');
-for (const dep of ['@capacitor/android', '@capacitor/core', '@capacitor-community/sqlite', '@capacitor/filesystem', '@capacitor/share']) {
+for (const dep of ['@capacitor/android', '@capacitor/core', '@capacitor-community/sqlite', '@capacitor/filesystem', '@capacitor/share', '@capacitor/camera']) {
   assert.ok(p.dependencies[dep], 'Required Android runtime dependency: ' + dep);
 }
 const config = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
@@ -24,6 +24,15 @@ const app = fs.readFileSync('www/app.js', 'utf8');
 assert.match(app, /Store\.open\(\)/);
 assert.match(app, /Store\.commit\(/);
 assert.match(app, /shareFileNative/);
+assert.match(app, /photoFromAndroidCamera/);
+assert.match(app, /saveExportAndroid/);
+assert.match(app, /SpendRecorderDocument/);
+assert.match(app, /RecorderAndroid/);
+const native = fs.readFileSync('build/android-native.sh', 'utf8');
+assert.match(native, /registerPlugin\(SpendRecorderDocumentPlugin\.class\)/);
+assert.match(native, /MediaStore\.Downloads\.EXTERNAL_CONTENT_URI/);
+assert.match(native, /mimeType/);
+assert.match(native, /base64/);
 const sign = fs.readFileSync('build/android-sign.sh', 'utf8');
 assert.match(sign, /SPENDRECORDER_SIGNING_KEYSTORE_BASE64/);
 assert.match(sign, /SPENDRECORDER_SIGNING_PASSWORD/);
