@@ -1,0 +1,25 @@
+{
+  "workflow": "SpendRecorder Android APK test build",
+  "branch": "android",
+  "run_id": 38327179622,
+  "run_attempt": "1",
+  "run_url": "https://github.com/willyros01/spendrecorder/actions/runs/38327179622",
+  "source_sha": "c396f05697e4b67455fed36e483ce9b969d963c3",
+  "outcome": "failure",
+  "artifact_name": null,
+  "publication": {
+    "destination": "https://www.cuberoot-systems.com/downloads/spendrecorder.apk",
+    "state": "not-requested",
+    "mechanism": "Cuberoot publisher polls this verified build report"
+  },
+  "reported_at": "2026-10-13T00:25:52.825Z",
+  "jobs": [
+    {
+      "name": "apk",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Require permanent Android signing secrets"
+      ]
+    }
+  ]
+}
