@@ -1,3 +1,9 @@
+## 2026-10-15 — Android migration addendum
+
+This handover describes the **original iOS 1.0.0** setup; it is not a current Fire OS installation/acceptance guide. The Android adaptation is on `spendrecorder/android` version **1.0.2** and documented in `build/ANDROID-PLAN.md`. It uses local SQLite, permanent Android signing and native camera/Downloads; published APK does **not** establish end-to-end Fire device acceptance. Do not modify `main` iOS, historical `expense-ledger`, or local SQLite records based on these notes. Development freeze applies.
+
+---
+
 # SpendRecorder 1.0.0 — setup
 
 SpendRecorder is the iOS app made from Expense Ledger build v13. It is built in the cloud by
