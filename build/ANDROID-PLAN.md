@@ -1,3 +1,12 @@
+## Current Android migration result — 2026-10-15
+
+- Platform: **SpendRecorder 1.0.2**, Fire/Android only on branch `android`; local SQLite, local receipt photos, **no Firebase**. iOS/TestFlight is the untouched `main`; legacy `expense-ledger` must not be modified.
+- Signed GitHub Android build **38327473119** (attempt 2), Cuberoot publisher **38331336483** and Pages **38331357495** passed as recorded below. Subsequently a targeted Android-only Camera-vs-Gallery and CSV/XLSX **Save to Downloads** correction was compiled in signed build **38333150238**, and published by Cuberoot workflow **38333065239** (attempt 2). These are automated build/publishing results, **not proof that the Fire HD 8 retested camera, export or persistent SQLite**.
+- **Device acceptance pending:** install only an exact same-signer verified updated APK in-place when authorized; verify pre-existing expense/receipt persistence, new camera/photo prompt, saved CSV/XLSX file in actual Downloads, offline access, portrait/landscape and large fonts. Do not uninstall, overwrite user DB, regenerate signing keys, change `main` or rerun CI merely to update docs.
+- Development/build freeze applies; records may be maintained without any APK or Firebase change.
+
+---
+
 # SpendRecorder Android — isolated branch and automated APK delivery
 
 ## Baseline
