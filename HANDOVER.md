@@ -1,3 +1,9 @@
+## Documentation note — 2026-10-15
+
+The setup instructions below are the **original iOS 1.0.0 migration handover**, preserved for reference rather than proof of current App Store/TestFlight approval. Current source remains `spendrecorder/main`; Android Fire migration is isolated to `spendrecorder/android`, and the old `expense-ledger/main` must remain separate. The Android 1.0.2 signing and native SQLite/camera/export details must not be applied to iOS without an owner-approved equivalent behavior change. The owner has frozen new builds, not documentation.
+
+---
+
 # SpendRecorder 1.0.0 — setup
 
 SpendRecorder is the iOS app made from Expense Ledger build v13. It is built in the cloud by
