@@ -1,3 +1,9 @@
+## SpendRecorder Android — branch-local status (2026-10-15)
+
+The `android` branch contains SpendRecorder **1.0.2**, a local-SQLite Fire OS/Capacitor app with permanent APK signing and native receipt Camera/Downloads adaptations. Signed Android build and Cuberoot APK publication are recorded as PASS in `build/ANDROID-PLAN.md`, including the subsequent targeted camera/export repair; **Fire HD 8 physical acceptance of those latest repairs remains unverified**. Keep iOS/TestFlight `main`, original `expense-ledger`, and user SQLite records unchanged. No builds without explicit owner authorization. 
+
+---
+
 # SpendRecorder
 
 Record your own expenses on your phone — any currency, with totals in your home currency.
