@@ -8,10 +8,18 @@ The simulator copies use temporary, disposable databases. No production signing 
 
 | Platform | Tested commit | GitHub run | Result | Screenshot and log record |
 | --- | --- | --- | --- | --- |
-| Android | `d353795` (test harness) | [Retry run 40048839263](https://github.com/willyros01/spendrecorder/actions/runs/40048839263) | IN PROGRESS | Pending |
+| Android | `d353795` (app and test harness) | [Run 40048839263](https://github.com/willyros01/spendrecorder/actions/runs/40048839263) | **PASS: 9/9** | [Full illustrated report with 17 emulator captures](https://github.com/willyros01/spendrecorder/blob/ci-logs/logs/device-android/2-d353795/REPORT.md) |
 | iPhone | `main` at `d6be863` (app); `2e7b438` (test harness) | [Run 40048383885](https://github.com/willyros01/spendrecorder/actions/runs/40048383885) | **PASS: 9/9** | [Full illustrated report with 17 simulator captures](https://github.com/willyros01/spendrecorder/blob/ci-logs/logs/device-ios/1-2e7b438/REPORT.md) |
 
 The report is updated only after the matching run logs have been inspected. A green GitHub status alone does **not** establish a test pass. Screenshots and complete run reports are attached to each test run; the reports link the screen captures to named actions.
+
+**Verified result: 18/18 platform-scenario checks passed, with 34 actual device-simulator screen captures preserved.** This is an automated simulator result, not final physical-device acceptance.
+
+### Android — verified run
+
+The [Android illustrated report](https://github.com/willyros01/spendrecorder/blob/ci-logs/logs/device-android/2-d353795/REPORT.md) records nine completed scenarios, native SQLite checks, and 17 emulator screenshots. It verifies real native data storage, restart persistence, edit and Undo, receipt-data persistence, offline manual conversion, committed deletion, and a CSV saved to the Android emulator's Downloads directory.
+
+The camera/gallery picker, Samsung/Amazon-specific file managers, and the actual Fire HD 8 remain **NOT TESTED** by this run.
 
 ### iPhone — verified run
 
@@ -19,9 +27,9 @@ The simulator report and GitHub Actions result agree: all nine scenarios complet
 
 The receipt scenario verifies that an image fixture is committed and reloaded from SQLite; it is **not** proof that a real phone camera or gallery picker works. On iOS, CSV creation and the share sheet opened, but choosing a cloud file destination is **NOT TESTED**.
 
-### Android — test-harness retry
+### Android — earlier test-harness error (resolved)
 
-[Initial run 40048383811](https://github.com/willyros01/spendrecorder/actions/runs/40048383811) failed **before any app tests** because the emulator runner launched its command with `sh` while the command requested Bash's `pipefail`. The native debug APK built and emulator booted. A one-line Bash invocation fix is being verified in [retry run 40048839263](https://github.com/willyros01/spendrecorder/actions/runs/40048839263). This initial infrastructure error is not an application-test failure or pass.
+[Initial run 40048383811](https://github.com/willyros01/spendrecorder/actions/runs/40048383811) failed **before any app tests** because the emulator runner launched its command with `sh` while the command requested Bash's `pipefail`. The native debug APK built and emulator booted. A one-line Bash invocation fix resolved this: [retry run 40048839263](https://github.com/willyros01/spendrecorder/actions/runs/40048839263) completed all nine tests successfully. This initial infrastructure error is not an application-test failure or pass.
 
 ## Scenarios
 
