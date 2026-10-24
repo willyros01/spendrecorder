@@ -1,0 +1,1 @@
+No test report: build or simulator setup failed before tests ran.
