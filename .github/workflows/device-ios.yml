@@ -1,0 +1,82 @@
+name: SpendRecorder device test - iPhone SQLite
+
+# TEST-ONLY: disposable simulator build from read-only main, NO TestFlight.
+on:
+  push:
+    branches: [android]
+    paths:
+      - 'build/device/**'
+      - '.github/workflows/device-ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write # Only the isolated ci-logs test-evidence branch
+
+concurrency:
+  group: spendrecorder-device-simulator-tests
+  cancel-in-progress: false
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: willyros01/spendrecorder
+          ref: main
+          path: ios-src
+          persist-credentials: false
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check test scripts and install Web Inspector bridge
+        run: |
+          node --check build/device/run.mjs
+          node --check build/device/sim.mjs
+          bash -n build/device/save-logs.sh
+          brew install ios-webkit-debug-proxy
+      - name: Build TEST iPhone simulator copy from read-only main
+        run: |
+          set -Eeuo pipefail
+          mkdir -p out-device
+          {
+            cd ios-src
+            npm install --no-audit --no-fund
+            npx cap add ios
+            npx cap sync ios
+            plutil -replace NSCameraUsageDescription -string 'Test receipt photo attachment' ios/App/App/Info.plist
+            plutil -replace NSPhotoLibraryUsageDescription -string 'Test receipt photo attachment' ios/App/App/Info.plist
+            UDID="$(xcrun simctl list devices available -j | node -e 'const d=JSON.parse(require("fs").readFileSync(0)).devices; const all=Object.entries(d).filter(([rt])=>/iOS/.test(rt)).flatMap(([,list])=>list); const pick=all.reverse().find(x=>/^iPhone \d+$/.test(x.name)); if(!pick) process.exit(1); console.log(pick.udid)')"
+            echo "UDID=$UDID" >> "$GITHUB_ENV"
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination "id=$UDID" -derivedDataPath "$RUNNER_TEMP/spendrecorder-dd" CODE_SIGNING_ALLOWED=NO build
+          } 2>&1 | tee out-device/build.log
+      - name: Boot iPhone and connect Web Inspector
+        run: |
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          SOCKET="$(lsof -aUc launchd_sim 2>/dev/null | grep -o '/private/tmp/com.apple.launchd[^ ]*/com.apple.webinspectord_sim.socket' | head -1)"
+          test -n "$SOCKET"
+          nohup ios_webkit_debug_proxy -s "unix:$SOCKET" -F > out-device/iwdp.log 2>&1 &
+          sleep 3
+      - name: Run real UI and native SQLite checks
+        run: |
+          set -Eeuo pipefail
+          APP="$(find "$RUNNER_TEMP/spendrecorder-dd/Build/Products" -maxdepth 2 -name App.app | head -1)"
+          test -d "$APP"
+          node build/device/run.mjs ios out-device "$APP" 2>&1 | tee out-device/console.log
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spendrecorder-ios-simulator-${{ github.run_number }}
+          path: out-device/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Preserve screenshots and results in ci-logs
+        if: always()
+        run: bash build/device/save-logs.sh ios out-device

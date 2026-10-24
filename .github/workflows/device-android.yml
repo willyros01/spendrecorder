@@ -1,0 +1,78 @@
+name: SpendRecorder device test - Android SQLite
+
+# TEST-ONLY: temporary debug APK, Pixel emulator, native SQLite; NO publication.
+on:
+  push:
+    branches: [android]
+    paths:
+      - 'build/device/**'
+      - '.github/workflows/device-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write # Only the isolated ci-logs test-evidence branch
+
+concurrency:
+  group: spendrecorder-device-simulator-tests
+  cancel-in-progress: false
+
+jobs:
+  simulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check test scripts before building
+        run: |
+          node --check build/device/run.mjs
+          node --check build/device/adb.mjs
+          bash -n build/device/save-logs.sh
+      - name: Build disposable DEBUG app, never a release APK
+        run: |
+          set -Eeuo pipefail
+          mkdir -p out-device
+          {
+            npm install --no-audit --no-fund
+            npx cap add android
+            npx cap sync android
+            bash build/android-native.sh
+            java build/AndroidIcons.java resources/icon.png android/app/src/main/res
+            chmod +x android/gradlew
+            ( cd android && ./gradlew --no-daemon assembleDebug )
+            test -s android/app/build/outputs/apk/debug/app-debug.apk
+          } 2>&1 | tee out-device/build.log
+      - name: Hardware acceleration for the phone emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run real UI and native SQLite checks
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disable-animations: true
+          script: |
+            set -o pipefail
+            node build/device/run.mjs android out-device android/app/build/outputs/apk/debug/app-debug.apk 2>&1 | tee out-device/console.log
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spendrecorder-android-simulator-${{ github.run_number }}
+          path: out-device/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Preserve screenshots and results in ci-logs
+        if: always()
+        run: bash build/device/save-logs.sh android out-device
