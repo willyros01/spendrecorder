@@ -15,6 +15,26 @@ The report is updated only after the matching run logs have been inspected. A gr
 
 **Verified result: 18/18 platform-scenario checks passed, with 34 actual device-simulator screen captures preserved.** This is an automated simulator result, not final physical-device acceptance.
 
+## Selected actual screen captures
+
+These images come directly from the test runs. For all **34 screenshots in numbered order**, open the full Android and iPhone illustrated reports linked in the table above.
+
+### Android: expense-entry form
+
+![Actual Android emulator — CAD expense entry](https://raw.githubusercontent.com/willyros01/spendrecorder/ci-logs/logs/device-android/2-d353795/03-expense-form.png)
+
+### Android: CSV export saved to Downloads
+
+![Actual Android emulator — CSV export saved](https://raw.githubusercontent.com/willyros01/spendrecorder/ci-logs/logs/device-android/2-d353795/17-csv-saved-to-downloads.png)
+
+### iPhone: expense recorded in History
+
+![Actual iPhone simulator — expense in History](https://raw.githubusercontent.com/willyros01/spendrecorder/ci-logs/logs/device-ios/1-2e7b438/04-expense-in-history.png)
+
+### iPhone: CSV export share sheet
+
+![Actual iPhone simulator — export share sheet](https://raw.githubusercontent.com/willyros01/spendrecorder/ci-logs/logs/device-ios/1-2e7b438/17-ios-share-sheet.png)
+
 ### Android — verified run
 
 The [Android illustrated report](https://github.com/willyros01/spendrecorder/blob/ci-logs/logs/device-android/2-d353795/REPORT.md) records nine completed scenarios, native SQLite checks, and 17 emulator screenshots. It verifies real native data storage, restart persistence, edit and Undo, receipt-data persistence, offline manual conversion, committed deletion, and a CSV saved to the Android emulator's Downloads directory.
