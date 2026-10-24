@@ -8,10 +8,20 @@ The simulator copies use temporary, disposable databases. No production signing 
 
 | Platform | Tested commit | GitHub run | Result | Screenshot and log record |
 | --- | --- | --- | --- | --- |
-| Android | Pending | Pending | NOT RUN | Pending |
-| iPhone | Pending | Pending | NOT RUN | Pending |
+| Android | `d353795` (test harness) | [Retry run 40048839263](https://github.com/willyros01/spendrecorder/actions/runs/40048839263) | IN PROGRESS | Pending |
+| iPhone | `main` at `d6be863` (app); `2e7b438` (test harness) | [Run 40048383885](https://github.com/willyros01/spendrecorder/actions/runs/40048383885) | **PASS: 9/9** | [Full illustrated report with 17 simulator captures](https://github.com/willyros01/spendrecorder/blob/ci-logs/logs/device-ios/1-2e7b438/REPORT.md) |
 
 The report is updated only after the matching run logs have been inspected. A green GitHub status alone does **not** establish a test pass. Screenshots and complete run reports are attached to each test run; the reports link the screen captures to named actions.
+
+### iPhone — verified run
+
+The simulator report and GitHub Actions result agree: all nine scenarios completed successfully against the native SQLite plugin. The evidence includes the real simulator's screen captures for Terms, New Expense, History, Edit, Undo, receipt persistence, manual PHP conversion, deletion, Summary, and export. Each image is embedded immediately after its step in the [illustrated report](https://github.com/willyros01/spendrecorder/blob/ci-logs/logs/device-ios/1-2e7b438/REPORT.md).
+
+The receipt scenario verifies that an image fixture is committed and reloaded from SQLite; it is **not** proof that a real phone camera or gallery picker works. On iOS, CSV creation and the share sheet opened, but choosing a cloud file destination is **NOT TESTED**.
+
+### Android — test-harness retry
+
+[Initial run 40048383811](https://github.com/willyros01/spendrecorder/actions/runs/40048383811) failed **before any app tests** because the emulator runner launched its command with `sh` while the command requested Bash's `pipefail`. The native debug APK built and emulator booted. A one-line Bash invocation fix is being verified in [retry run 40048839263](https://github.com/willyros01/spendrecorder/actions/runs/40048839263). This initial infrastructure error is not an application-test failure or pass.
 
 ## Scenarios
 
