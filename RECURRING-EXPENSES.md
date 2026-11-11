@@ -36,3 +36,22 @@ intervals, month ends and leap years. Android native media/signing preflight als
 runs. Browser UI QA and exact native build/publication results are recorded after
 completion. Passing SQLite tests/builds does not constitute physical device
 acceptance.
+
+## Build results
+
+
+  v1.1.0 (2026-11-10) — automatic recurring expenses on iOS and Android.
+    Same behavior as Expense Ledger build v19: Daily/Custom frequency, automatic
+    catch-up, latest-occurrence edits update one future template, older records
+    remain unchanged. Additive SQLite metadata table; receipts preserved.
+    20 date/storage checks PASS, including real SQLite rollback/upgrade tests.
+    Browser New/Edit/History, latest template, persistence and stop PASS.
+    iOS source 3c83758d66d8869544cb02ab0f1e7094b298e4d3: build/upload run
+    42931991700 PASS; version 1.1.0 build 8 uploaded to Apple processing.
+    Android source 9f6aa9558a504870a58837d480ed95b901d4ad42: signed run
+    42931999334 PASS, artifact 13817655561; certificate unchanged. Cuberoot
+    publisher 42932665361 PASS. APK SHA256
+    5fbfec2b9daacadd5b48d410865a66425b48751b0f7918895a4ef4b07800c523.
+    Website guide: /spendrecorder/guide/index.html (public, large text).
+    Physical iPhone/Fire in-place update acceptance remains for the owner;
+    build and database tests do not certify physical-device acceptance.
