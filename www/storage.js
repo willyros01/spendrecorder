@@ -45,6 +45,7 @@ var SCHEMA = [
   "CREATE INDEX IF NOT EXISTS expenses_by_date ON expenses(date);",
   "CREATE TABLE IF NOT EXISTS receipts (" +
   " expense_id TEXT PRIMARY KEY NOT NULL REFERENCES expenses(id) ON DELETE CASCADE, data TEXT NOT NULL);",
+  "CREATE TABLE IF NOT EXISTS expense_metadata (expense_id TEXT PRIMARY KEY NOT NULL REFERENCES expenses(id) ON DELETE CASCADE, data TEXT NOT NULL);",
   "CREATE TABLE IF NOT EXISTS categories (pos INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL UNIQUE);",
   "CREATE TABLE IF NOT EXISTS vendors (name TEXT PRIMARY KEY NOT NULL);",
   "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT);"
@@ -115,6 +116,9 @@ function sqliteStatements(ops){
   ops.forEach(function(o){
     if (o.op === "putEntry") {
       set.push({ statement: UPSERT_EXPENSE, values: expenseValues(o.entry) });
+      var metadata={};["recurrence","recurrenceId","scheduledDate","autoPosted"].forEach(function(k){if(o.entry[k]!==undefined)metadata[k]=o.entry[k];});
+      if(Object.keys(metadata).length)set.push({statement:"INSERT INTO expense_metadata (expense_id,data) VALUES (?,?) ON CONFLICT(expense_id) DO UPDATE SET data=excluded.data;",values:[o.entry.id,JSON.stringify(metadata)]});
+      else set.push({statement:"DELETE FROM expense_metadata WHERE expense_id = ?;",values:[o.entry.id]});
       if (o.receipt === null) set.push({ statement: "DELETE FROM receipts WHERE expense_id = ?;", values: [o.entry.id] });
       else if (typeof o.receipt === "string") set.push({ statement: "INSERT OR REPLACE INTO receipts (expense_id, data) VALUES (?, ?);", values: [o.entry.id, o.receipt] });
     } else if (o.op === "deleteEntries") {
@@ -141,14 +145,14 @@ function sqliteCommit(ops){
   return SQL.executeSet({ database: DBNAME, set: set, transaction: true, readonly: false, returnMode: "no" });
 }
 function rowToEntry(e){
-  return { id: e.id, date: e.date, amount: Number(e.amount), currency: e.currency, vendor: e.vendor, category: e.category,
+  return Object.assign(e.recurring_metadata?JSON.parse(e.recurring_metadata):{}, { id: e.id, date: e.date, amount: Number(e.amount), currency: e.currency, vendor: e.vendor, category: e.category,
            comments: e.comments || "", home: e.home, rate: Number(e.rate),
            rateDate: e.rate_date || null, rateSource: e.rate_source || null, amountHome: Number(e.amount_home),
-           createdAt: Number(e.created_at) || 0, updatedAt: Number(e.updated_at) || 0, hasReceipt: !!Number(e.has_receipt) };
+           createdAt: Number(e.created_at) || 0, updatedAt: Number(e.updated_at) || 0, hasReceipt: !!Number(e.has_receipt) });
 }
 function sqliteLoad(){
   return Promise.all([
-    q("SELECT e.*, (r.expense_id IS NOT NULL) AS has_receipt FROM expenses e LEFT JOIN receipts r ON r.expense_id = e.id;"),
+    q("SELECT e.*, m.data AS recurring_metadata, (r.expense_id IS NOT NULL) AS has_receipt FROM expenses e LEFT JOIN receipts r ON r.expense_id = e.id LEFT JOIN expense_metadata m ON m.expense_id = e.id;"),
     q("SELECT name FROM categories ORDER BY pos;"),
     q("SELECT name FROM vendors ORDER BY name;"),
     q("SELECT key, value FROM settings;")
@@ -245,6 +249,23 @@ var Store = {
     var p = commitChain.then(run, run);
     commitChain = p.catch(function(){});
     return p;
+  },
+  /* Compute conditional recurring writes from freshly committed data within
+     the same serialization queue. The planner returns {ops,result}. */
+  update: function(planner){
+    var run=async function(){
+      if(storageBlocked)throw new Error(storageBlocked);
+      var data=await (isNative?sqliteLoad():webLoad());
+      var plan=await planner(data);
+      var ops=plan.ops||[];
+      if(ops.length)await (isNative?sqliteCommit(ops):webCommit(ops));
+      ops.forEach(function(o){
+        if(o.op==="putEntry"&&o.receipt!==undefined)receiptCache.delete(o.entry.id);
+        if(o.op==="deleteEntries")o.ids.forEach(function(id){receiptCache.delete(id);});
+      });
+      return plan.result;
+    };
+    var p=commitChain.then(run,run);commitChain=p.catch(function(){});return p;
   },
   load: function(){ return isNative ? sqliteLoad() : webLoad(); },
   getReceipt: function(id){

@@ -40,6 +40,7 @@ jobs:
           java-version: "21"
       - name: Validate shared source, SQLite transaction contract and scripts
         run: |
+          node --test tests/*.test.cjs
           node build/test-android.cjs
           node build/test-android-media.cjs
           bash -n build/android-build.sh

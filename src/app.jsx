@@ -2,7 +2,7 @@
    Made from Expense Ledger build v13. Storage is in www/storage.js. */
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-const APP_VERSION = "1.0.3";
+const APP_VERSION = "1.1.0";
 const APP_NAME = "SpendRecorder";
 
 const DEFAULT_CATEGORIES = ["Food & Dining","Transportation","Accommodation","Utilities","Office & Supplies","Health & Wellness","Entertainment","Other"];
@@ -57,7 +57,7 @@ function localDateStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padS
 function todayStr(){ return localDateStr(new Date()); }
 
 function emptyForm(defaultCategory) {
-  return { date: todayStr(), amount:"", currency: START_CURRENCY, vendor:"", category: defaultCategory || "Other",
+  return { date: todayStr(), recurring:false, frequency:"monthly", repeatEvery:1, repeatUnit:"days", amount:"", currency: START_CURRENCY, vendor:"", category: defaultCategory || "Other",
            comments:"", receipt:null, receiptDirty:false, rateFixed:null };
 }
 // Pinned to en-CA rather than the device locale. Dollar-family currencies get an
@@ -207,39 +207,39 @@ async function shareFileNative(filename, base64, text){
 /* Android-only bridge: Fairpot's camera chooser and fail-closed public Downloads save.
    Capacitor native WebView exposes bundled plugins through window.Capacitor.Plugins. */
 const RecorderAndroid = !!(window.Capacitor && window.Capacitor.isNativePlatform &&
-  window.Capacitor.isNativePlatform() && window.Capacitor.getPlatform &&
-  window.Capacitor.getPlatform()==="android");
+    window.Capacitor.isNativePlatform() && window.Capacitor.getPlatform &&
+    window.Capacitor.getPlatform() === "android");
 const SpendCamera = RecorderAndroid && window.Capacitor.Plugins && window.Capacitor.Plugins.Camera;
 const SpendDownloads = RecorderAndroid && window.Capacitor.Plugins && window.Capacitor.Plugins.SpendRecorderDocument;
-
-async function photoFromAndroidCamera(){
-  if(!SpendCamera || typeof SpendCamera.getPhoto!=="function"){
-    throw new Error("Android Camera service unavailable in this build");
-  }
-  const photo = await SpendCamera.getPhoto({
-    quality:90, allowEditing:false, resultType:"base64", source:"PROMPT",
-    promptLabelHeader:"Receipt photo", promptLabelPhoto:"Choose from Gallery", promptLabelPicture:"Take Photo"
-  });
-  if(!photo || !photo.base64String) throw new Error("No receipt photo was returned");
-  const binary = atob(photo.base64String);
-  const bytes = new Uint8Array(binary.length);
-  for(let i=0; i<binary.length; i++) bytes[i]=binary.charCodeAt(i);
-  const data = await compressImageSafe(new Blob([bytes],{type:"image/"+(photo.format||"jpeg")}));
-  if(!data) throw new Error("That photo is too large even after compression");
-  return data;
+async function photoFromAndroidCamera() {
+    if (!SpendCamera || typeof SpendCamera.getPhoto !== "function") {
+        throw new Error("Android Camera service unavailable in this build");
+    }
+    const photo = await SpendCamera.getPhoto({
+        quality: 90, allowEditing: false, resultType: "base64", source: "PROMPT",
+        promptLabelHeader: "Receipt photo", promptLabelPhoto: "Choose from Gallery", promptLabelPicture: "Take Photo"
+    });
+    if (!photo || !photo.base64String)
+        throw new Error("No receipt photo was returned");
+    const binary = atob(photo.base64String);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++)
+        bytes[i] = binary.charCodeAt(i);
+    const data = await compressImageSafe(new Blob([bytes], { type: "image/" + (photo.format || "jpeg") }));
+    if (!data)
+        throw new Error("That photo is too large even after compression");
+    return data;
 }
-
-async function saveExportAndroid(filename, base64, mime){
-  if(!SpendDownloads || typeof SpendDownloads.saveToDownloads!=="function"){
-    throw new Error("Android Downloads service is unavailable in this build");
-  }
-  const result = await SpendDownloads.saveToDownloads({fileName:filename, base64, mimeType:mime});
-  if(!result || result.saved!==true || result.location!=="Downloads"){
-    throw new Error("Android export was not confirmed saved");
-  }
-  return result.fileName || filename;
+async function saveExportAndroid(filename, base64, mime) {
+    if (!SpendDownloads || typeof SpendDownloads.saveToDownloads !== "function") {
+        throw new Error("Android Downloads service is unavailable in this build");
+    }
+    const result = await SpendDownloads.saveToDownloads({ fileName: filename, base64, mimeType: mime });
+    if (!result || result.saved !== true || result.location !== "Downloads") {
+        throw new Error("Android export was not confirmed saved");
+    }
+    return result.fileName || filename;
 }
-
 /* ===================== terms of use (first use; the app stays locked until accepted) ===================== */
 const TERMS_VERSION = "1";
 const TERMS_DATE = "October 9, 2026";
@@ -362,7 +362,7 @@ function useReceipt(id, has, version){
   return src;
 }
 
-function ExpenseCard({en, home, selectMode, selected, onToggle, onEdit, onShare, onDelete, onPhoto}){
+function ExpenseCard({en, home, series, selectMode, selected, onToggle, onEdit, onShare, onDelete, onPhoto}){
   const receipt = useReceipt(en.id, en.hasReceipt, en.updatedAt);
   return (
     <div className="card expcard">
@@ -391,6 +391,8 @@ function ExpenseCard({en, home, selectMode, selected, onToggle, onEdit, onShare,
         <div className="exp-rate">Saved in {en.home}; shown in {home} at today's rate</div>
       )}
       {en.comments && <div className="exp-note">{en.comments}</div>}
+      {series&&series.latest?<div className="recurring-note">↻ {Recurring.label(series.root.recurrence)} · {series.root.recurrence.enabled?"Next due: "+series.root.recurrence.nextDate:"Repeating off"}</div>:(en.recurrence||en.recurrenceId)&&<div className="recurring-note">Recurring expense</div>}
+
       <div className="btnrow">
         <button className="btn btn-soft" onClick={()=>onEdit(en)}>Edit</button>
         <button className="btn btn-soft" onClick={()=>onShare(en)}>Share</button>
@@ -464,6 +466,11 @@ function TabBar({tab, setTab}){
 function SpendRecorder(){
   // ---- committed data: a read copy of the database, replaced after every commit ----
   const [entries, setEntries] = useState([]);
+  const entriesRef=useRef([]);
+  const editSeriesRef=useRef(null);
+  const submitLock=useRef(false);
+  const autoLock=useRef(false),autoRetry=useRef(null),autoContext=useRef(null);
+  const [autoTick,setAutoTick]=useState(0),[autoError,setAutoError]=useState("");
   const [loaded, setLoaded] = useState(false);
   const [storageError, setStorageError] = useState("");
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
@@ -481,7 +488,7 @@ function SpendRecorder(){
 
   const applyData = useCallback((d)=>{
     const s = d.settings || {};
-    setEntries(d.entries);
+    entriesRef.current=d.entries;setEntries(d.entries);
     setCategories(d.categories || DEFAULT_CATEGORIES);
     setVendors(d.vendors || []);
     setHome(s.home || DEFAULT_HOME);
@@ -726,7 +733,10 @@ function SpendRecorder(){
   }
 
   const editIdRef = useRef(null);
+  function seriesFor(entry){return SpendRecurring.series(entriesRef.current,entry);}
   function startEdit(entry){
+    const context=seriesFor(entry),rec=context&&context.root.recurrence;
+    editSeriesRef.current=context?JSON.parse(JSON.stringify(context)):null;
     setEditingId(entry.id); editIdRef.current = entry.id;
     // The saved rate is kept unless you change the date or the currency.
     // (A placeholder or an old "last known" rate is looked up again instead.)
@@ -734,7 +744,8 @@ function SpendRecorder(){
       ? { rate:entry.rate, source:entry.rateSource, usedDate:entry.rateDate, currency:entry.currency, date:entry.date, home }
       : null;
     setForm({ date:entry.date, amount:String(entry.amount), currency:entry.currency||START_CURRENCY, vendor:entry.vendor, category:entry.category,
-              comments:entry.comments||"", receipt:null, receiptDirty:false, rateFixed:keep });
+              comments:entry.comments||"", receipt:null, receiptDirty:false, rateFixed:keep,
+      recurring:!!(rec&&rec.enabled),frequency:rec?Recurring.preset(rec):"monthly",repeatEvery:rec?rec.every:1,repeatUnit:rec?rec.unit:"days" });
     if(entry.hasReceipt){
       Store.getReceipt(entry.id).then(d=>{
         if(editIdRef.current===entry.id) setForm(f=> f.receiptDirty ? f : {...f, receipt:d});
@@ -743,7 +754,7 @@ function SpendRecorder(){
     setShowNewVendor(false); setShowNewCategory(false); setFormError("");
     window.scrollTo({top:0,behavior:"smooth"});
   }
-  function cancelEdit(){ setEditingId(null); editIdRef.current=null; setForm(emptyForm(allCategories[0])); setFormError(""); }
+  function cancelEdit(){ editSeriesRef.current=null;setEditingId(null); editIdRef.current=null; setForm(emptyForm(allCategories[0])); setFormError(""); }
 
   async function handleReceiptCamera(){
     setImgError("");
@@ -771,13 +782,20 @@ function SpendRecorder(){
 
   async function handleSubmit(e){
     e.preventDefault();
-    if(submitting) return false;
+    if(submitLock.current) return false;
     const amt = parseFloat(form.amount);
     if(!form.date){ setFormError("Pick a date."); return false; }
     if(!form.vendor.trim()){ setFormError("Enter a vendor."); return false; }
     if(!amt || amt<=0){ setFormError("Enter an amount greater than zero."); return false; }
 
-    setSubmitting(true); setFormError("");
+    let settings=null;
+    const context=editingId?editSeriesRef.current:null;
+    try{
+      Recurring.date(form.date);
+      if(context){const rec=context.root.recurrence;settings={spec:context.latest&&form.recurring?Recurring.spec(form.frequency,form.repeatEvery,form.repeatUnit,form.date):{unit:rec.unit,every:rec.every,anchor:rec.anchor},enabled:form.recurring};}
+      else if(form.recurring)settings={spec:Recurring.spec(form.frequency,form.repeatEvery,form.repeatUnit,form.date),enabled:true};
+    }catch(err){setFormError(err.message);return false;}
+    submitLock.current=true;setSubmitting(true); setFormError("");
     try {
       const r = form.currency===home ? { rate:1, usedDate:form.date, source:"home" }
         : fixedRate ? { rate:fixedRate.rate, usedDate:fixedRate.usedDate, source:fixedRate.source }
@@ -801,19 +819,22 @@ function SpendRecorder(){
                   comments:form.comments.trim(), home, amountHome, rate:r.rate, rateDate:r.usedDate, rateSource:r.source,
                   createdAt:now, updatedAt:now };
       }
-      ops.push({ op:"putEntry", entry, receipt: receiptOp });
+      if(!context&&!settings)ops.push({ op:"putEntry", entry, receipt: receiptOp });
       ops.push({op:"setting", key:"recent_currencies", value:JSON.stringify([form.currency, ...recent.filter(c=>c!==form.currency)].slice(0,6))});
 
-      const ok = await commitOps(ops, editingId ? "The changes" : "The expense");
+      let ok;
+      if(context||settings){await SpendRecurring.save(Store,entry,context,settings,receiptOp,ops);await reload();ok=true;}
+      else ok=await commitOps(ops,editingId?"The changes":"The expense");
       if(!ok) return false;
 
       const verb = editingId ? "updated" : "added";
       showToast(r.source==="home" ? `Expense ${verb}` : `Expense ${verb} — ${rateSourceLabel(r.source, r.usedDate, form.date)}`);
       setForm(emptyForm(allCategories[0]));
-      setEditingId(null); editIdRef.current = null;
+      setEditingId(null); editIdRef.current = null;editSeriesRef.current=null;
       return true;
+    } catch(err){setFormError(err.message||"Could not save. Your form is still here.");return false;
     } finally {
-      setSubmitting(false);
+      submitLock.current=false;setSubmitting(false);
     }
   }
 
@@ -884,6 +905,7 @@ function SpendRecorder(){
 
       const existingKeys = new Set(entries.map(dedupKey));
       const seenThisImport = new Set();
+      const importedIds=new Set(entries.map(x=>x.id));
       const rateMemo = new Map();
       const toAdd = [];
       let skippedDup=0, errored=0;
@@ -905,9 +927,11 @@ function SpendRecorder(){
 
         if(!date || !vendor || !amount || amount<=0 || !/^[A-Z]{3}$/.test(currency)){ errored++; continue; }
 
+        let metadata;
+        try{metadata=SpendRecurring.importMetadata(pickField(row,["recurring data"]));}catch(err){errored++;continue;}
         const key = `${date}|${vendor.toLowerCase()}|${currency}|${amount.toFixed(2)}`;
-        if(existingKeys.has(key) || seenThisImport.has(key)){ skippedDup++; continue; }
-        seenThisImport.add(key);
+        if(metadata.id?importedIds.has(metadata.id):existingKeys.has(key)||seenThisImport.has(key)){skippedDup++;continue;}
+        if(metadata.id)importedIds.add(metadata.id);else seenThisImport.add(key);
 
         const memoKey = `${currency}|${date}`;
         let r = rateMemo.get(memoKey);
@@ -920,7 +944,7 @@ function SpendRecorder(){
         toAdd.push({
           id:newId(), date, amount, currency, vendor, category:String(rawCategory).trim()||"Other",
           comments:String(rawComments).trim(), home, amountHome:amount*r.rate, rate:r.rate, rateDate:r.usedDate,
-          rateSource:r.source, createdAt:now, updatedAt:now,
+          rateSource:r.source, createdAt:now, updatedAt:now,...metadata,
         });
         newCats.add(String(rawCategory).trim()||"Other");
         newVendors.add(vendor);
@@ -1011,7 +1035,7 @@ function SpendRecorder(){
     Date:e.date, Vendor:e.vendor||"", Category:e.category||"", "Amount (Original)":Number(e.amount||0), Currency:e.currency,
     "Rate":Number((e.rate||0).toFixed(6)), "Rate date":e.rateDate||"", "Rate source":rateSourceLabel(e.rateSource, e.rateDate, e.date),
     "Converted To":e.home, "Amount (Converted)":Number((e.amountHome||0).toFixed(2)), [`Amount (${home})`]:Number(H(e).toFixed(2)),
-    Comments:e.comments||""
+    Comments:e.comments||"", "Recurring Data":SpendRecurring.exportMetadata(e)
   });
   function buildCSV(){
     const rows = filtered.map(exportRow);
@@ -1218,6 +1242,45 @@ function SpendRecorder(){
   const storageBanner = storageError ? <div className="card importnote bad wide" style={{marginBottom:12}}>{storageError}</div> : null;
   const amt = parseFloat(form.amount||0);
 
+  const editSeries=editingId?editSeriesRef.current:null,pastSeries=!!(editSeries&&!editSeries.latest);
+  let nextPreview="";
+  try{if(form.recurring){const spec=Recurring.spec(form.frequency,form.repeatEvery,form.repeatUnit,form.date);
+    nextPreview=editSeries?Recurring.latestSchedule(editSeries.root,{...editSeries.record,date:form.date,amount:Number(form.amount),currency:form.currency,vendor:form.vendor,category:form.category,comments:form.comments},editSeries.record,spec,true).nextDate:Recurring.edited(null,spec,true).nextDate;
+  }}catch(err){}
+  autoContext.current={loaded,termsOK,home,editingId,importing,pendingDelete,committingIds,storageError};
+  function canAuto(context){const current=autoContext.current;return current&&current.loaded&&current.termsOK&&!current.storageError&&current.home===context.home&&!current.editingId&&!current.importing&&!current.pendingDelete&&!current.committingIds.length&&!submitLock.current&&document.visibilityState!=="hidden";}
+  useEffect(()=>{
+    const refresh=()=>setAutoTick(n=>n+1);
+    const timer=setInterval(refresh,60000);
+    window.addEventListener("focus",refresh);window.addEventListener("online",refresh);document.addEventListener("visibilitychange",refresh);
+    const app=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
+    const listener=app&&app.addListener?Promise.resolve(app.addListener("appStateChange",state=>{if(state.isActive)refresh();})):null;
+    return ()=>{clearInterval(timer);clearTimeout(autoRetry.current);autoContext.current=null;
+      window.removeEventListener("focus",refresh);window.removeEventListener("online",refresh);document.removeEventListener("visibilitychange",refresh);
+      if(listener)listener.then(handle=>handle.remove()).catch(()=>{});
+    };
+  },[]);
+  useEffect(()=>{
+    const context=autoContext.current;
+    if(!canAuto(context)||autoLock.current)return;
+    const due=entries.filter(x=>Recurring.active(x.recurrence)&&x.recurrence.nextDate<=todayStr());
+    if(!due.length){setAutoError("");return;}
+    const timer=setTimeout(async()=>{
+      if(!canAuto(context)||autoLock.current)return;autoLock.current=true;clearTimeout(autoRetry.current);
+      try{
+        const result=await Recurring.catchUp(due,todayStr(),{limit:50,keepGoing:()=>canAuto(context),
+          quote:async(currency,date)=>({...(currency===home?{rate:1,usedDate:date,source:"home"}:await fetchRateWithFallback(currency,home,date,rateCacheRef.current)),currency,home}),
+          post:async(rootId,date,quote)=>{const result=await SpendRecurring.post(Store,rootId,date,quote);await reload();return result;}
+        });
+        setAutoError(result.errors.length?"Recurring expenses will retry automatically. "+result.errors[0]:"");
+        if(result.posted)showToast(`Added ${result.posted} recurring ${result.posted===1?"expense":"expenses"}`);
+        if(result.more||result.errors.length)autoRetry.current=setTimeout(()=>setAutoTick(n=>n+1),result.errors.length?30000:300);
+      }catch(err){setAutoError("Recurring expenses will retry automatically. "+err.message);autoRetry.current=setTimeout(()=>setAutoTick(n=>n+1),30000);}
+      finally{autoLock.current=false;}
+    },250);
+    return ()=>clearTimeout(timer);
+  },[entries,loaded,termsOK,home,editingId,submitting,importing,pendingDelete,committingIds,storageError,autoTick]);
+
   // ---- first use: nothing else is shown until the terms are accepted ----
   if(!loaded) return <div className="wrap"><div className="card empty" style={{marginTop:40}}>Loading {APP_NAME}…</div></div>;
   if(!termsOK) return <TermsGate mode="accept" onAccept={acceptTerms} storageError={storageError} />;
@@ -1230,6 +1293,7 @@ function SpendRecorder(){
         <div className="wrap">
           <PageHead title={editingId ? "Edit" : "New"} currency={displayCurrency} home={home} live={live} />
           {storageBanner}
+          {autoError&&<div className="card recurring-note" role="status">{autoError}</div>}
 
           <form onSubmit={submitAndReturn} className="newgrid">
             {editingId && (
@@ -1368,6 +1432,25 @@ function SpendRecorder(){
               <label className="lbl" style={{marginTop:14}}>Comments</label>
               <textarea rows={2} className="fld" placeholder="Optional notes" value={form.comments}
                 onChange={e=>setForm({...form, comments:e.target.value})} />
+              <div style={{marginTop:20}}>
+                <label className="recurring-row"><input type="checkbox" checked={!!form.recurring} disabled={pastSeries}
+                  aria-controls="recurring-options" aria-expanded={!!form.recurring} onChange={e=>setForm({...form,recurring:e.target.checked})} />Recurring expense</label>
+                {form.recurring && <div id="recurring-options" className="recurring-options">
+                  <label className="lbl" htmlFor="repeat-frequency">Frequency</label>
+                  <select id="repeat-frequency" className="fld" value={form.frequency} disabled={pastSeries} onChange={e=>setForm({...form,frequency:e.target.value})}>
+                    <option value="daily">Every day</option><option value="weekly">Every week</option><option value="fortnightly">Every 2 weeks</option>
+                    <option value="monthly">Every month</option><option value="quarterly">Every 3 months</option><option value="yearly">Every year</option><option value="custom">Custom…</option>
+                  </select>
+                  {form.frequency==="custom" && <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                    <div style={{flex:"1 1 120px"}}><label className="lbl" htmlFor="repeat-every">Repeat every</label><input id="repeat-every" className="fld" type="number" inputMode="numeric" min="1" max="999" step="1" value={form.repeatEvery} disabled={pastSeries} onChange={e=>setForm({...form,repeatEvery:e.target.value})} /></div>
+                    <div style={{flex:"1 1 150px"}}><label className="lbl" htmlFor="repeat-unit">Unit</label><select id="repeat-unit" className="fld" value={form.repeatUnit} disabled={pastSeries} onChange={e=>setForm({...form,repeatUnit:e.target.value})}><option value="days">Days</option><option value="weeks">Weeks</option><option value="months">Months</option><option value="years">Years</option></select></div>
+                  </div>}
+                  <div className="hint">{pastSeries?"Past occurrence: edits apply only to this record.":(nextPreview?"Next due: "+nextPreview+". ":"")+"Edits to the latest occurrence also update future postings. Earlier records stay unchanged."}</div>
+                </div>}
+                {editSeries&&editSeries.latest&&!form.recurring && <div className="recurring-note">Save changes to turn repeating off. Recorded expenses remain.</div>}
+                {pastSeries&&!form.recurring && <div className="recurring-note">Past occurrence: edits apply only to this record.</div>}
+                {editSeries&&editSeries.latest&&!form.recurring && <div className="recurring-note">This is the latest occurrence. Earlier records stay unchanged.</div>}
+              </div>
             </div>
 
             {formError && <div className="card err wide" style={{marginBottom:12}}>{formError}</div>}
@@ -1384,6 +1467,7 @@ function SpendRecorder(){
         <div className="wrap">
           <PageHead title="History" currency={displayCurrency} home={home} live={live} />
           {storageBanner}
+          {autoError&&<div className="card recurring-note" role="status">{autoError}</div>}
 
           {drillChip && (
             <button className="drillchip" onClick={clearDrill}>
@@ -1428,7 +1512,7 @@ function SpendRecorder(){
           ) : (
             <div className="explist">
               {histFiltered.map(en=>(
-                <ExpenseCard key={en.id} en={en} home={home}
+                <ExpenseCard key={en.id} en={en} home={home} series={seriesFor(en)}
                   selectMode={selectMode} selected={!!selected[en.id]} onToggle={()=>toggleSelect(en.id)}
                   onEdit={editFromHistory} onShare={shareEntry} onDelete={deleteEntry} onPhoto={setLightbox} />
               ))}
@@ -1442,6 +1526,7 @@ function SpendRecorder(){
         <div className="wrap">
           <PageHead title="Summary" currency={displayCurrency} home={home} live={live} />
           {storageBanner}
+          {autoError&&<div className="card recurring-note" role="status">{autoError}</div>}
 
           <div className="sumgrid">
           <div className="sumcol">
