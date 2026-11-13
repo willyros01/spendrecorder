@@ -1,18 +1,18 @@
 {
   "workflow": "SpendRecorder Android APK test build",
   "branch": "android",
-  "run_id": 43377736791,
+  "run_id": 43378246381,
   "run_attempt": "1",
-  "run_url": "https://github.com/willyros01/spendrecorder/actions/runs/43377736791",
-  "source_sha": "f86ee96021f72a8515352d4418b9e9d8c6965932",
-  "outcome": "cancelled",
-  "artifact_name": null,
+  "run_url": "https://github.com/willyros01/spendrecorder/actions/runs/43378246381",
+  "source_sha": "2d08be6cbcd14ecd38c7039d2f8b2382bee8eb06",
+  "outcome": "success",
+  "artifact_name": "spendrecorder-android-test-apk",
   "publication": {
     "destination": "https://www.cuberoot-systems.com/downloads/spendrecorder.apk",
-    "state": "not-requested",
+    "state": "queued-for-cuberoot-publisher",
     "mechanism": "Cuberoot publisher polls this verified build report"
   },
-  "reported_at": "2026-11-13T06:22:44.544Z",
+  "reported_at": "2026-11-13T06:27:33.717Z",
   "jobs": [
     {
       "name": "Validate Android native compilation",
@@ -21,8 +21,9 @@
     },
     {
       "name": "apk",
-      "conclusion": "cancelled",
+      "conclusion": "success",
       "failed_steps": []
     }
-  ]
+  ],
+  "artifact_id": 14015328025
 }
