@@ -69,3 +69,5 @@ Version history
   83feb66a5ec682fb52fc3a33bc55271b588f427c88e98aa02a9e362e7132f859.
   Public guide version 1.1.1 verified. Existing 20 database/date tests and Android
   compilation/media checks pass; physical-device visual acceptance remains for owner.
+
+1.1.2 — Correct recurring text to 16px field-value size, bold 700 and main text color; owner screenshot clarified that vendor/name values are the reference, not the smaller muted field labels.
