@@ -55,3 +55,5 @@ acceptance.
     Website guide: /spendrecorder/guide/index.html (public, large text).
     Physical iPhone/Fire in-place update acceptance remains for the owner;
     build and database tests do not certify physical-device acceptance.
+
+Typography update (2026-11-13): recurring controls reuse the existing label, field, checkbox, and hint styles across entry, edit, and history.
