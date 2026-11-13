@@ -2,7 +2,7 @@
    Made from Expense Ledger build v13. Storage is in www/storage.js. */
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.1.1";
 const APP_NAME = "SpendRecorder";
 
 const DEFAULT_CATEGORIES = ["Food & Dining","Transportation","Accommodation","Utilities","Office & Supplies","Health & Wellness","Entertainment","Other"];
@@ -391,7 +391,7 @@ function ExpenseCard({en, home, series, selectMode, selected, onToggle, onEdit, 
         <div className="exp-rate">Saved in {en.home}; shown in {home} at today's rate</div>
       )}
       {en.comments && <div className="exp-note">{en.comments}</div>}
-      {series&&series.latest?<div className="recurring-note">↻ {Recurring.label(series.root.recurrence)} · {series.root.recurrence.enabled?"Next due: "+series.root.recurrence.nextDate:"Repeating off"}</div>:(en.recurrence||en.recurrenceId)&&<div className="recurring-note">Recurring expense</div>}
+      {series&&series.latest?<div className="hint recurring-note">↻ {Recurring.label(series.root.recurrence)} · {series.root.recurrence.enabled?"Next due: "+series.root.recurrence.nextDate:"Repeating off"}</div>:(en.recurrence||en.recurrenceId)&&<div className="hint recurring-note">Recurring expense</div>}
 
       <div className="btnrow">
         <button className="btn btn-soft" onClick={()=>onEdit(en)}>Edit</button>
@@ -1293,7 +1293,7 @@ function SpendRecorder(){
         <div className="wrap">
           <PageHead title={editingId ? "Edit" : "New"} currency={displayCurrency} home={home} live={live} />
           {storageBanner}
-          {autoError&&<div className="card recurring-note" role="status">{autoError}</div>}
+          {autoError&&<div className="card hint recurring-note" role="status">{autoError}</div>}
 
           <form onSubmit={submitAndReturn} className="newgrid">
             {editingId && (
@@ -1433,7 +1433,7 @@ function SpendRecorder(){
               <textarea rows={2} className="fld" placeholder="Optional notes" value={form.comments}
                 onChange={e=>setForm({...form, comments:e.target.value})} />
               <div style={{marginTop:20}}>
-                <label className="recurring-row"><input type="checkbox" checked={!!form.recurring} disabled={pastSeries}
+                <label className="lbl recurring-row"><input className="chk" type="checkbox" checked={!!form.recurring} disabled={pastSeries}
                   aria-controls="recurring-options" aria-expanded={!!form.recurring} onChange={e=>setForm({...form,recurring:e.target.checked})} />Recurring expense</label>
                 {form.recurring && <div id="recurring-options" className="recurring-options">
                   <label className="lbl" htmlFor="repeat-frequency">Frequency</label>
@@ -1447,9 +1447,9 @@ function SpendRecorder(){
                   </div>}
                   <div className="hint">{pastSeries?"Past occurrence: edits apply only to this record.":(nextPreview?"Next due: "+nextPreview+". ":"")+"Edits to the latest occurrence also update future postings. Earlier records stay unchanged."}</div>
                 </div>}
-                {editSeries&&editSeries.latest&&!form.recurring && <div className="recurring-note">Save changes to turn repeating off. Recorded expenses remain.</div>}
-                {pastSeries&&!form.recurring && <div className="recurring-note">Past occurrence: edits apply only to this record.</div>}
-                {editSeries&&editSeries.latest&&!form.recurring && <div className="recurring-note">This is the latest occurrence. Earlier records stay unchanged.</div>}
+                {editSeries&&editSeries.latest&&!form.recurring && <div className="hint recurring-note">Save changes to turn repeating off. Recorded expenses remain.</div>}
+                {pastSeries&&!form.recurring && <div className="hint recurring-note">Past occurrence: edits apply only to this record.</div>}
+                {editSeries&&editSeries.latest&&!form.recurring && <div className="hint recurring-note">This is the latest occurrence. Earlier records stay unchanged.</div>}
               </div>
             </div>
 
@@ -1467,7 +1467,7 @@ function SpendRecorder(){
         <div className="wrap">
           <PageHead title="History" currency={displayCurrency} home={home} live={live} />
           {storageBanner}
-          {autoError&&<div className="card recurring-note" role="status">{autoError}</div>}
+          {autoError&&<div className="card hint recurring-note" role="status">{autoError}</div>}
 
           {drillChip && (
             <button className="drillchip" onClick={clearDrill}>
@@ -1526,7 +1526,7 @@ function SpendRecorder(){
         <div className="wrap">
           <PageHead title="Summary" currency={displayCurrency} home={home} live={live} />
           {storageBanner}
-          {autoError&&<div className="card recurring-note" role="status">{autoError}</div>}
+          {autoError&&<div className="card hint recurring-note" role="status">{autoError}</div>}
 
           <div className="sumgrid">
           <div className="sumcol">

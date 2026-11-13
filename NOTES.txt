@@ -57,3 +57,5 @@ Version history
     Website guide: /spendrecorder/guide/index.html (public, large text).
     Physical iPhone/Fire in-place update acceptance remains for the owner;
     build and database tests do not certify physical-device acceptance.
+
+2026-11-13 — 1.1.1: recurring labels, frequency/custom fields, and explanatory notes now use the same shared typography as the rest of the expense screen. Applied to entry, edit, and history; recurring behavior unchanged. Native build and publication verification recorded after CI.
