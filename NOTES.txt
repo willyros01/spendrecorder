@@ -60,3 +60,12 @@ Version history
 
 2026-11-13 — 1.1.1: recurring labels, frequency/custom fields, and explanatory notes now use the same shared typography as the rest of the expense screen. Applied to entry, edit, and history; recurring behavior unchanged. Native build and publication verification recorded after CI.
   Follow-up: recurring text bold at the existing shared sizes, per owner visibility request.
+  Verified release: iOS 1.1.1 build 10, source fe336ea05aff141edea12a7142271359987f9c9d,
+  run 43378241255 succeeded and Apple upload succeeded (processing).
+  Android 1.1.1 versionCode 100007, source 2d08be6cbcd14ecd38c7039d2f8b2382bee8eb06,
+  run 43378246381 succeeded; artifact 14015328025. Persistent signer unchanged.
+  Website publisher 43378902362 succeeded. Live APK checksum and all embedded app
+  assets verified against this release; SHA256:
+  83feb66a5ec682fb52fc3a33bc55271b588f427c88e98aa02a9e362e7132f859.
+  Public guide version 1.1.1 verified. Existing 20 database/date tests and Android
+  compilation/media checks pass; physical-device visual acceptance remains for owner.
