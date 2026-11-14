@@ -71,3 +71,5 @@ Version history
   compilation/media checks pass; physical-device visual acceptance remains for owner.
 
 1.1.2 — Correct recurring text to 16px field-value size, bold 700 and main text color; owner screenshot clarified that vendor/name values are the reference, not the smaller muted field labels.
+
+2026-11-14 — Recurring text now uses normal weight (400), matching vendor field values, with the existing 16px size and main text color. Applies to entry, edit, frequency/custom controls, and notes on web, iOS and Android. Supersedes the earlier bold styling request.
