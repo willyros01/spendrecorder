@@ -73,3 +73,12 @@ Version history
 1.1.2 — Correct recurring text to 16px field-value size, bold 700 and main text color; owner screenshot clarified that vendor/name values are the reference, not the smaller muted field labels.
 
 2026-11-14 — Recurring text now uses normal weight (400), matching vendor field values, with the existing 16px size and main text color. Applies to entry, edit, frequency/custom controls, and notes on web, iOS and Android. Supersedes the earlier bold styling request.
+  Verified 1.1.3 release: iOS build 12 / run 43605097489 succeeded; Apple
+  upload succeeded and package entered processing. Android versionCode 100009 /
+  run 43605101795 succeeded; artifact 14117408670. Publisher 43605547369 succeeded.
+  Downloaded live APK verified: source assets match Android release 463f0247,
+  permanent signer unchanged; SHA256:
+  cfc1e2013603b530db109fa5d99cbd570cef761d882d655136e82f8f13148801.
+  Both web HTML releases verified live, Expense Ledger build v23; recurring
+  text is 16px, normal weight 400, main text color. Native CI date/storage and
+  compilation checks passed. Physical-device appearance remains owner acceptance.
