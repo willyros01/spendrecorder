@@ -53,9 +53,17 @@ await step('Finance and Travel categories, subtitle and privacy policy', async (
   for (const [key, value] of Object.entries(attrs)) if (data.attributes[key] !== value) throw Error('Readback mismatch: ' + key);
 });
 
-const rights = (await api('apps/' + id + '?fields[apps]=contentRightsDeclaration')).data.attributes?.contentRightsDeclaration;
-console.log('Content-rights value currently reported by Apple: ' + (rights ?? 'unavailable'));
-console.log('Content rights need confirmation for the external exchange-rate data used by this build.');
+await step('readback of the pending content-rights declaration', async () => {
+  const app = 'apps/' + id + '?fields[apps]=contentRightsDeclaration';
+  const current = (await api(app)).data.attributes?.contentRightsDeclaration;
+  if (current === 'DOES_NOT_USE_THIRD_PARTY_CONTENT') {
+    // Clear the earlier draft answer pending verification of the exchange-rate provider's terms.
+    try { await patch('apps', id, { contentRightsDeclaration: null }); }
+    catch (error) { console.log('Apple did not allow clearing the earlier answer: ' + error.message); }
+  }
+  const saved = (await api(app)).data.attributes?.contentRightsDeclaration;
+  return saved ?? 'Pending rights and attribution verification';
+});
 
 await step('age-rating questionnaire', async () => {
   const age = infos.included?.find(x => x.type === 'ageRatingDeclarations' && x.id === info?.relationships?.ageRatingDeclaration?.data?.id) ||
@@ -71,7 +79,7 @@ await step('age-rating questionnaire', async () => {
   for (const name of frequency) if (name in age.attributes) answers[name] = 'NONE';
   if (!('unrestrictedWebAccess' in answers && 'gamblingSimulated' in answers)) throw Error('Unexpected age-rating schema');
   await patch('ageRatingDeclarations', age.id, answers);
-  const { data } = await api('ageRatingDeclarations/' + age.id);
+  const { data } = await api('appInfos/' + info.id + '/ageRatingDeclaration');
   for (const [key, value] of Object.entries(answers)) if (data.attributes[key] !== value) throw Error('Readback mismatch: ' + key);
   return Object.keys(answers).length + ' answers';
 });
