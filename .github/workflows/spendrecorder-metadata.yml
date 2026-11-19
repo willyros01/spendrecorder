@@ -1,0 +1,27 @@
+name: Upload SpendRecorder App Store listing metadata
+on:
+  push:
+    branches: [app-store-preparation]
+    paths: ['store/apple.mjs', 'store/listing.json', 'store/prepare.mjs', '.github/workflows/spendrecorder-metadata.yml']
+permissions:
+  contents: read
+concurrency:
+  group: spendrecorder-app-store-metadata
+  cancel-in-progress: false
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Populate and verify the existing iOS draft
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: node store/prepare.mjs
