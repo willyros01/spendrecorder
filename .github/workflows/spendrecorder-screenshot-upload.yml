@@ -1,0 +1,36 @@
+name: Upload and verify SpendRecorder iPhone screenshots
+on:
+  push:
+    branches: [app-store-preparation]
+    paths: ['.github/workflows/spendrecorder-screenshot-upload.yml']
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: spendrecorder-app-store-screenshots
+  cancel-in-progress: false
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 44460021021
+          name: spendrecorder-store-iPhone
+          path: captures/iPhone
+      - name: Verify reviewed screenshot checksums
+        run: sha256sum --check store/screenshot-checksums.txt
+      - name: Upload the iPhone set through App Store Connect and verify processing
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: node store/upload-screenshots.mjs iPhone

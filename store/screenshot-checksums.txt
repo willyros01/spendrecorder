@@ -1,0 +1,4 @@
+a723da0456a10bde5d1902388b3cab67dcc53e6f3c394fef0709389c8a79455c  captures/iPhone/01-new-expense.png
+821357cec50b486cd59a7312070e16d206dd40d2aea025d7a833575fb0dbad7e  captures/iPhone/02-history.png
+80bc5398b41f73bc575b5cba5180f30061a264214e43f87d395d3dded8503537  captures/iPhone/03-currencies.png
+cdbd05b7d6440c5a4f638900199bf2a5a1ea87b6c81943e20676cca5d6454e63  captures/iPhone/05-summary.png
