@@ -53,11 +53,9 @@ await step('Finance and Travel categories, subtitle and privacy policy', async (
   for (const [key, value] of Object.entries(attrs)) if (data.attributes[key] !== value) throw Error('Readback mismatch: ' + key);
 });
 
-await step('content rights', async () => {
-  const value = 'DOES_NOT_USE_THIRD_PARTY_CONTENT';
-  await patch('apps', id, { contentRightsDeclaration: value });
-  if ((await api('apps/' + id)).data.attributes.contentRightsDeclaration !== value) throw Error('Content rights did not persist');
-});
+const rights = (await api('apps/' + id + '?fields[apps]=contentRightsDeclaration')).data.attributes?.contentRightsDeclaration;
+console.log('Content-rights value currently reported by Apple: ' + (rights ?? 'unavailable'));
+console.log('Content rights need confirmation for the external exchange-rate data used by this build.');
 
 await step('age-rating questionnaire', async () => {
   const age = infos.included?.find(x => x.type === 'ageRatingDeclarations' && x.id === info?.relationships?.ageRatingDeclaration?.data?.id) ||
@@ -67,11 +65,11 @@ await step('age-rating questionnaire', async () => {
     'parentalControls', 'socialMedia', 'socialMediaAgeRestricted', 'unrestrictedWebAccess', 'userGeneratedContent'];
   const frequency = ['alcoholTobaccoOrDrugUseOrReferences', 'contests', 'gunsOrOtherWeapons', 'horrorOrFearThemes',
     'matureOrSuggestiveThemes', 'medicalOrTreatmentInformation', 'profanityOrCrudeHumor', 'sexualContentGraphicAndNudity',
-    'sexualContentOrNudity', 'simulatedGambling', 'violenceCartoonOrFantasy', 'violenceRealistic', 'violenceRealisticProlongedGraphicOrSadistic'];
+    'sexualContentOrNudity', 'gamblingSimulated', 'violenceCartoonOrFantasy', 'violenceRealistic', 'violenceRealisticProlongedGraphicOrSadistic'];
   const answers = {};
   for (const name of booleans) if (name in age.attributes) answers[name] = false;
   for (const name of frequency) if (name in age.attributes) answers[name] = 'NONE';
-  if (!('unrestrictedWebAccess' in answers && 'simulatedGambling' in answers)) throw Error('Unexpected age-rating schema');
+  if (!('unrestrictedWebAccess' in answers && 'gamblingSimulated' in answers)) throw Error('Unexpected age-rating schema');
   await patch('ageRatingDeclarations', age.id, answers);
   const { data } = await api('ageRatingDeclarations/' + age.id);
   for (const [key, value] of Object.entries(answers)) if (data.attributes[key] !== value) throw Error('Readback mismatch: ' + key);
@@ -110,7 +108,13 @@ await step('valid iOS build 12 and export compliance', async () => {
 
 await step('free pricing', async () => {
   let schedule = await optional('apps/' + id + '/appPriceSchedule');
-  if (!schedule) {
+  let prices;
+  const readPrices = async () => {
+    try { return await api('appPriceSchedules/' + schedule.id + '/manualPrices?include=appPricePoint&limit=200'); }
+    catch (error) { if (error.status !== 404) throw error; }
+  };
+  if (schedule) prices = await readPrices();
+  if (!prices?.data.length) {
     const point = (await list('apps/' + id + '/appPricePoints?filter[territory]=CAN&limit=200'))
       .find(row => Number(row.attributes.customerPrice) === 0);
     if (!point) throw Error('Free Canadian price point missing');
@@ -120,16 +124,36 @@ await step('free pricing', async () => {
       included: [{ ...price, attributes: { startDate: null }, relationships: { appPricePoint: relationship('appPricePoints', point.id) } }]
     });
     schedule = (await api('apps/' + id + '/appPriceSchedule')).data;
+    prices = await readPrices();
   }
-  const prices = await api('appPriceSchedules/' + schedule.id + '/manualPrices?include=appPricePoint&limit=200');
-  const points = prices.included?.filter(x => x.type === 'appPricePoints');
+  const points = prices?.included?.filter(x => x.type === 'appPricePoints');
   if (!points?.length || points.some(x => Number(x.attributes.customerPrice) !== 0)) throw Error('Existing schedule could not be verified as free');
 });
 
 await step('territory availability', async () => {
-  const availability = await optional('apps/' + id + '/appAvailabilityV2');
-  if (!availability) throw Error('Country/region availability has not been set');
-  const territories = await list('/v2/appAvailabilities/' + availability.id + '/territoryAvailabilities?limit=200');
+  let availability = await optional('apps/' + id + '/appAvailabilityV2');
+  const readTerritories = row => list('/v2/appAvailabilities/' + row.id + '/territoryAvailabilities?include=territory&limit=200');
+  if (!availability) {
+    // The SpendRecorder listing plan calls for the same worldwide distribution as the other Cuberoot apps.
+    const precedent = await optional('apps/6833284199/appAvailabilityV2');
+    if (!precedent) throw Error('The existing worldwide distribution reference is unavailable');
+    const source = (await readTerritories(precedent)).filter(row => row.attributes.available);
+    if (!source.length) throw Error('No territories on the verified distribution reference');
+    const included = source.map((row, index) => ({
+      ...ref('territoryAvailabilities', '${territory' + index + '}'),
+      attributes: { available: true, preOrderEnabled: false },
+      relationships: { territory: relationship('territories', row.relationships.territory.data.id) }
+    }));
+    await api('/v2/appAvailabilities', 'POST', {
+      data: { type: 'appAvailabilities', attributes: { availableInNewTerritories: precedent.attributes.availableInNewTerritories },
+        relationships: { app: relationship('apps', id), territoryAvailabilities: { data: included.map(({ type, id }) => ref(type, id)) } } },
+      included
+    });
+    availability = (await api('apps/' + id + '/appAvailabilityV2')).data;
+    const selected = (await readTerritories(availability)).filter(row => row.attributes.available);
+    if (selected.length !== source.length) throw Error('Worldwide selections did not fully persist');
+  }
+  const territories = await readTerritories(availability);
   const selected = territories.filter(x => x.attributes.available).length;
   if (!selected) throw Error('No countries/regions selected');
   return { selected, automaticFutureTerritories: availability.attributes.availableInNewTerritories };
