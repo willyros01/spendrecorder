@@ -1,0 +1,40 @@
+name: Capture SpendRecorder App Store screenshots
+on:
+  push:
+    branches: [app-store-preparation]
+    paths: ['store/capture.*', '.github/workflows/spendrecorder-capture.yml']
+permissions:
+  contents: read
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      DEVICE: ${{ matrix.device }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: brew install ios-webkit-debug-proxy
+      - name: Verify exact TestFlight app source and capture screenshots
+        run: |
+          git fetch --depth=1 origin 20b8dd797af9ba09e6b9a7b3e0b03bbd04b9164c
+          git diff --exit-code FETCH_HEAD HEAD -- www package.json capacitor.config.json resources build/ios-build.sh
+          node --test tests/*.test.cjs
+          bash store/capture.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spendrecorder-store-${{ matrix.device }}
+          path: ${{ runner.temp }}/captures/*.png
+          if-no-files-found: warn
