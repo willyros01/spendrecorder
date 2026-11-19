@@ -1,0 +1,38 @@
+name: Verify SpendRecorder App Store Connect
+on:
+  push:
+    branches: [app-store-preparation]
+    paths: ['.github/workflows/spendrecorder-store.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - name: Read the existing app and its iOS versions
+        run: |
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          const encode = x => Buffer.from(JSON.stringify(x)).toString('base64url');
+          const now = Math.floor(Date.now() / 1000);
+          const unsigned = encode({alg:'ES256',kid:process.env.ASC_KEY_ID.trim(),typ:'JWT'}) + '.' +
+            encode({iss:process.env.ASC_ISSUER_ID.trim(),iat:now,exp:now+300,aud:'appstoreconnect-v1'});
+          const token = unsigned + '.' + crypto.sign('sha256', Buffer.from(unsigned), {
+            key:process.env.ASC_KEY_P8.trim(),dsaEncoding:'ieee-p1363'
+          }).toString('base64url');
+          async function get(path) {
+            const response = await fetch('https://api.appstoreconnect.apple.com/v1/' + path, {
+              headers:{Authorization:'Bearer ' + token},signal:AbortSignal.timeout(30000)
+            });
+            if (!response.ok) throw Error('Apple API HTTP ' + response.status);
+            return (await response.json()).data;
+          }
+          const app = await get('apps/6821221103');
+          if (app.attributes.bundleId !== 'io.github.willyros01.spendrecorder') throw Error('Unexpected Apple app');
+          const versions = await get('apps/6821221103/appStoreVersions?filter[platform]=IOS&limit=200');
+          console.log(JSON.stringify({locale:app.attributes.primaryLocale,versions:versions.map(v=>({version:v.attributes.versionString,state:v.attributes.appStoreState,releaseType:v.attributes.releaseType}))}));
+          NODE
