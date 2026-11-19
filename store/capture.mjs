@@ -15,7 +15,7 @@ async function fill(selector, value) {
   await act(`(() => {
     const el = document.querySelector(${JSON.stringify(selector)});
     if (!el) return false;
-    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value').set(el, ${JSON.stringify(value)});
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value').set.call(el, ${JSON.stringify(value)});
     el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
     return true;
   })()`);
@@ -32,7 +32,12 @@ try {
   device.launch(bundle);
   await device.waitApp(/Terms of Use/, 60000);
   await device.press('.termsgate input[type="checkbox"]');
-  await act(`[...document.querySelectorAll('button')].find(x => x.textContent.trim() === 'Accept')?.click() === undefined && true`);
+  await act(`(() => {
+    const accept = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === 'Accept');
+    if (!accept) return false;
+    accept.click();
+    return true;
+  })()`);
   await device.waitApp(/Receipt photo/);
   const fixture = [
     ['Harbour Café', 'Food & Dining', 18.5, 'CAD', 1, 'Lunch'],
@@ -83,12 +88,19 @@ try {
   await fill('form input[type="number"]', '845.50');
   await fill('form select.fld', 'Harbour Café');
   await device.waitApp(/Tap to type your own rate/, 60000);
-  await act("document.querySelector('.ratebox:not([disabled])')?.click() === undefined && !!document.querySelector('.ratebox')");
+  await act(`(() => {
+    const rate = document.querySelector('.ratebox:not([disabled])');
+    if (!rate) return false;
+    rate.click();
+    return true;
+  })()`);
   await act('window.scrollTo(0, 0); true');
-  await capture('01-new-expense', /own rate/i);
+  for (let count = 0; count < 15 && await device.js("!!document.querySelector('.toast')"); count++) await device.sleep(400);
+  await capture('01-new-expense', /Use the looked-up rate instead/);
 
   await device.press('.recurring-row input');
   await fill('#repeat-frequency', 'monthly');
+  await act("document.querySelector('#recurring-options').scrollIntoView({block:'center'}); true");
   await capture('04-recurring', /Next due:/);
 
   await device.press('.tabbar button:nth-child(2)');
