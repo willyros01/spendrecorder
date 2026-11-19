@@ -1,4 +1,4 @@
-name: Upload and verify SpendRecorder iPhone screenshots
+name: Upload and verify SpendRecorder iPhone and iPad screenshots
 on:
   push:
     branches: [app-store-preparation]
@@ -26,11 +26,17 @@ jobs:
           run-id: 44460021021
           name: spendrecorder-store-iPhone
           path: captures/iPhone
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 44460021021
+          name: spendrecorder-store-iPad
+          path: captures/iPad
       - name: Verify reviewed screenshot checksums
         run: sha256sum --check store/screenshot-checksums.txt
-      - name: Upload the iPhone set through App Store Connect and verify processing
+      - name: Upload both device sets through App Store Connect and verify processing
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: node store/upload-screenshots.mjs iPhone
+        run: node store/upload-screenshots.mjs
